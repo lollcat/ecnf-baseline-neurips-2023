@@ -46,17 +46,17 @@ class VectorNet(nn.Module):
              features: Optional[chex.Array] = None):
          chex.assert_rank(x, 2)
          chex.assert_rank(t, 1)
-         nn_in = jnp.concatenate([x, t[None]], axis=-1)
+         nn_in = jnp.concatenate([x, t[:, None]], axis=-1)
          mlp = MLP(features=(*self.features, x.shape[-1]), activate_final=False)
          return mlp(nn_in)
 
 
 
 def setup_training():
-    lr = 1e-4
+    lr = 4e-4
     dim = 2
     batch_size = 32
-    n_iteration = 10
+    n_iteration = 100
     logger = ListLogger()
     seed = 0
     n_eval = 5
@@ -67,9 +67,9 @@ def setup_training():
 
     sigma_min = 0.01
     base_scale = 10.
-    base = distrax.MultivariateNormalDiag(loc=jnp.zeros(dim))
+    base = distrax.MultivariateNormalDiag(loc=jnp.zeros(dim), scale_diag=jnp.ones(dim)*base_scale)
 
-    get_cond_vector_field = partial(optimal_transport_conditional_vf)(sigma_min=sigma_min)
+    get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
     net = VectorNet()
 
     cnf = FlowMatchingCNF(init=net.init, apply=net.apply, get_x_t_and_conditional_u_t=get_cond_vector_field,
@@ -121,7 +121,7 @@ def setup_training():
 
 
     train_config = TrainConfig(
-        n_iteration=n_training_iter,
+        n_iteration=n_iteration,
         logger=logger,
         seed=seed,
         n_checkpoints=0,
@@ -146,3 +146,6 @@ if __name__ == '__main__':
     samples = setup_target_data(n=1000)
     plt.plot(samples[:, 0], samples[:, 1], 'o', alpha=0.4)
     plt.show()
+
+    config = setup_training()
+    run_training(config)

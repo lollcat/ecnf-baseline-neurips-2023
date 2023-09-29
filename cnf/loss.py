@@ -18,9 +18,10 @@ def flow_matching_loss_fn(
     batch_size = x_data.shape[0]
     x0 = cnf.sample_base(key1, batch_size)
     t = jax.random.uniform(key2, shape=(batch_size,))
-    x_t, u_t_conditional = cnf.get_x_t_and_conditional_u_t(x0=x0, x1=x_data, t=t)
+    x_t, u_t_conditional = jax.vmap(cnf.get_x_t_and_conditional_u_t)(x0, x_data, t)
     v_t = cnf.apply(params, x_data, t, features)
 
     loss = jnp.mean((v_t - u_t_conditional)**2)
     info = {}
+    info.update(loss=loss)
     return loss, info
