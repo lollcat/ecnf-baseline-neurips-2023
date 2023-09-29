@@ -15,7 +15,7 @@ class TrainingState(NamedTuple):
     key: chex.PRNGKey
 
 
-@partial(jax.jit, static_argnums=(0,1,4))
+@partial(jax.jit, static_argnums=(0,1))
 def flow_matching_update_fn(
         cnf: FlowMatchingCNF,
         opt_update: optax.TransformUpdateFn,
