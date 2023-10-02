@@ -113,7 +113,6 @@ def setup_training():
         ax.legend()
 
         figs = [fig1,]
-        figs = []
         for j, figure in enumerate(figs):
             if save:
                 figure.savefig(
