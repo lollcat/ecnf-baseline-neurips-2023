@@ -1,4 +1,4 @@
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Sequence, Tuple, Optional
 
 
 import jax.numpy as jnp
@@ -115,10 +115,10 @@ class EGCL(nn.Module):
 
 class EGNN(nn.Module):
     """Configuration of EGNN."""
-    name: str
     n_blocks: int  # number of layers
     mlp_units: Sequence[int]
     n_invariant_feat_hidden: int
+    name: Optional[str] = None
     activation_fn: Callable = jax.nn.silu
     residual_h: bool = True
     residual_x: bool = True
@@ -131,7 +131,7 @@ class EGNN(nn.Module):
         positions: chex.Array,
         node_features: chex.Array,
         global_features: chex.Array,  # Time embedding.
-    ) -> Tuple[chex.Array, chex.Array]:
+    ) -> chex.Array:
         assert positions.ndim in (2, 3)
         vmap = positions.ndim == 3
         if vmap:

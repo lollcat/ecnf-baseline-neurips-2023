@@ -14,6 +14,10 @@ def flow_matching_loss_fn(
         key: chex.PRNGKey,
         features: Optional[chex.Array] = None
 ) -> Tuple[chex.Array, dict]:
+    chex.assert_rank(x_data, 2)
+    if features is not None:
+        chex.assert_rank(features, 2)
+
     key1, key2 = jax.random.split(key)
     batch_size = x_data.shape[0]
     x0 = cnf.sample_base(key1, batch_size)

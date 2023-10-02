@@ -10,11 +10,14 @@ from ecnf.cnf.core import FlowMatchingCNF
 
 def sample_cnf(cnf: FlowMatchingCNF, params: chex.ArrayTree,
                key: chex.PRNGKey, features: Optional[chex.Array] = None) -> chex.Array:
+
     def f(t: chex.Array, y: chex.Array, args: None) -> chex.Array:
+        feat = features[None] if features is not None else None
+
         x = y
         chex.assert_rank(t, 0)
         chex.assert_rank(x, 1)
-        vector_field = cnf.apply(params, x[None], t[None], features)
+        vector_field = cnf.apply(params, x[None], t[None], feat)
         return jnp.squeeze(vector_field, axis=0)
 
     term = ODETerm(f)
@@ -37,6 +40,7 @@ def get_log_prob(
         features: Optional[chex.Array] = None,
         approx: bool = False,
 ) -> chex.Array:
+    features = features[None] if features is not None else None
 
     eps = jax.random.normal(key, x.shape)
 
