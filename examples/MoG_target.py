@@ -140,13 +140,23 @@ def setup_training():
 
     def eval_and_plot(state: TrainingState, key: chex.PRNGKey,
                  iteration_n: int, save: bool, plots_dir: str) -> dict:
-        log_prob = jax.vmap(get_log_prob, in_axes=(None, None, 0, None))(cnf, state.params, test_data, None)
+        key1, key2 = jax.random.split(key)
+        key_batch = jax.random.split(key1, test_data.shape[0])
+        features = None
+        log_prob = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, None))(cnf, state.params, test_data, key_batch,
+                                                                            features)
         target_log_prob = target_distribution.log_prob(test_data)
         chex.assert_equal_shape((log_prob, target_log_prob))
         info = {}
         info.update(
             test_log_lik=jnp.mean(log_prob),
             test_kl=jnp.mean(target_log_prob - log_prob))
+
+
+        log_prob_approx = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, None, None))(
+            cnf, state.params, test_data, key_batch, features, True)
+        chex.assert_equal_shape((log_prob_approx, target_log_prob))
+        info.update(test_approx_log_lik=jnp.mean(log_prob_approx))
 
 
         key, subkey = jax.random.split(key)
