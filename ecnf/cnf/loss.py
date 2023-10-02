@@ -1,10 +1,10 @@
-from typing import Tuple, Callable, Optional
+from typing import Tuple, Optional
 
 import chex
 import jax.random
 import jax.numpy as jnp
 
-from cnf.core import FlowMatchingCNF
+from ecnf.cnf.core import FlowMatchingCNF
 
 
 def flow_matching_loss_fn(

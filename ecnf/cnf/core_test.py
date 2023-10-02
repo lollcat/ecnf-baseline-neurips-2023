@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import distrax
 from functools import partial
 
-from cnf.core import FlowMatchingCNF, optimal_transport_conditional_vf
+from ecnf.cnf.core import FlowMatchingCNF, optimal_transport_conditional_vf
 
 
 if __name__ == '__main__':

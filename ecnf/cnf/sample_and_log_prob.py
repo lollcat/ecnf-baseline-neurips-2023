@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import jax
 from diffrax import diffeqsolve, ODETerm, Dopri5, PIDController
 
-from cnf.core import FlowMatchingCNF
+from ecnf.cnf.core import FlowMatchingCNF
 
 
 def sample_cnf(cnf: FlowMatchingCNF, params: chex.ArrayTree,

@@ -5,8 +5,8 @@ import jax
 import optax
 from functools import partial
 
-from cnf.core import FlowMatchingCNF
-from cnf.loss import flow_matching_loss_fn
+from ecnf.cnf.core import FlowMatchingCNF
+from ecnf.cnf.loss import flow_matching_loss_fn
 
 
 class TrainingState(NamedTuple):
