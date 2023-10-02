@@ -14,19 +14,23 @@ from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
 from ecnf.utils.loop import TrainConfig, run_training
 from ecnf.utils.loggers import ListLogger
 from ecnf.targets.data import load_lj13
-
+from ecnf.utils.setup_train_objects import setup_logger
+from ecnf.utils.loggers import WandbLogger
+from ecnf.utils.plotting import bin_samples_by_dist, get_pairwise_distances_for_plotting, get_counts
 
 
 def setup_training():
     lr = 1e-4
     batch_size = 8
-    n_iteration = int(1e4)
+    n_iteration = int(1e2)
     logger = ListLogger()
     seed = 0
     n_eval = 5
+    n_samples_plotting = 16
 
 
     train_data_, valid_data_, test_data_ = load_lj13(1000)
+    test_data_ = test_data_[:8]  # TODO: Remove
     optimizer = optax.adamw(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
@@ -72,9 +76,10 @@ def setup_training():
         info = jax.tree_map(lambda *xs: jnp.stack(xs), *infos)
         return state, info
 
-    def eval_and_plot(state: TrainingState, key: chex.PRNGKey,
-                 iteration_n: int, save: bool, plots_dir: str) -> dict:
-        return {}
+
+    def eval_and_plot(
+            state: TrainingState, key: chex.PRNGKey,
+            iteration_n: int, save: bool, plots_dir: str) -> dict:
         key1, key2 = jax.random.split(key)
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
         log_prob = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(cnf, state.params, test_pos_flat, key_batch,
@@ -91,20 +96,23 @@ def setup_training():
 
 
         key, subkey = jax.random.split(key)
-        features = None
+        key_batch = jax.random.split(key, n_samples_plotting)
+        flow_samples_flat = jax.vmap(sample_cnf, in_axes=(None, None, 0, 0))(
+            cnf, state.params, key_batch, jnp.repeat(train_features_flat[0:1], n_samples_plotting, axis=0))
+        flow_samples = jnp.reshape(flow_samples_flat, (n_samples_plotting, n_nodes, dim))
 
         # Plot samples.
-        # n_samples_plotting = 512
-        # key_batch = jax.random.split(key, n_samples_plotting)
-        # flow_samples = jax.vmap(sample_cnf, in_axes=(None, None, 0, None))(
-        #     cnf, state.params, key_batch, features)
-        # fig1, axs = plt.subplots(1)
-        # axs.plot(flow_samples[:, 0], flow_samples[:, 1], "o", label="flow samples", alpha=0.4)
-        # axs.plot(train_data[:n_samples_plotting, 0], train_data[:n_samples_plotting, 1],
-        #          "o", label="target samples", alpha=0.4)
-        # axs.legend()
-        #
-        # figs = [fig1,]
+        bins_x, count_list = bin_samples_by_dist([train_data_.positions[:n_samples_plotting]], max_distance=10.)
+        plotting_n_nodes = train_data_.positions.shape[1]
+        pairwise_distances_flow = get_pairwise_distances_for_plotting(flow_samples, plotting_n_nodes, max_distance=10.)
+        counts_flow = get_counts(pairwise_distances_flow, bins_x)
+
+        fig1, ax = plt.subplots(1, figsize=(5, 5))
+        ax.stairs(count_list[0], bins_x, label="train samples", alpha=0.4, fill=True)
+        ax.stairs(counts_flow, bins_x, label="flow samples", alpha=0.4, fill=True)
+        ax.legend()
+
+        figs = [fig1,]
         figs = []
         for j, figure in enumerate(figs):
             if save:
