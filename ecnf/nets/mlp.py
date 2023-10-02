@@ -42,17 +42,18 @@ class StableMLP(nn.Module):
     def setup(self) -> None:
         if not self.activate_final:
             assert len(self.mlp_units) > 1, "MLP is single linear layer with no non-linearity"
-            n_output_params = self.mlp_units[-1]
-            mlp_units = self.mlp_units[:-1]
-        for i in range(len(self.mlp_units) - 1):  # Make sure mlp_units have constant width.
+
+        activated_mlp_units = self.mlp_units[:(None if self.activate_final else -1)]
+        for i in range(len(activated_mlp_units) - 1):
+            # Make sure mlp_units have constant width.
             assert self.mlp_units[i] == self.mlp_units[i+1]
         if self.stable_layer:
             layers = [nn.Dense(self.mlp_units[0]), self.activation]
             layers.extend([NonLinearLayerWithResidualAndLayerNorm(layer_width, activation_fn=self.activation)
-                           for layer_width in self.mlp_units[1:]])
+                           for layer_width in activated_mlp_units[1:]])
             self.mlp_function = nn.Sequential(layers)
         else:
-            self.mlp_function = MLP(self.mlp_units, activate_final=True, activation=self.activation)
+            self.mlp_function = MLP(activated_mlp_units, activate_final=True, activation=self.activation)
 
         if self.zero_init_output or self.output_variance_scaling:
             assert self.activate_final is False

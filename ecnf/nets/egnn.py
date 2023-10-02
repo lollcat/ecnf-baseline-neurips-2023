@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable, Sequence, Tuple
+from typing import Callable, Sequence, Tuple
 
 
 import jax.numpy as jnp
@@ -44,6 +44,7 @@ class EGCL(nn.Module):
         self.phi_h = StableMLP((*mlp_units, self.n_invariant_feat_hidden), activate_final=False,
                                  activation=activation_fn)
 
+    @nn.compact
     def __call__(self, node_positions: chex.Array, node_features: chex.Array, senders: chex.Array,
                  receivers: chex.Array) -> Tuple[chex.Array, chex.Array]:
         """E(N)GNN layer implementation.
@@ -62,13 +63,13 @@ class EGCL(nn.Module):
         chex.assert_rank(node_features, 2)
         chex.assert_rank(senders, 1)
         chex.assert_equal_shape([senders, receivers])
-        n_nodes, n_vectors, dim = node_positions.shape
+        n_nodes, dim = node_positions.shape
         avg_num_neighbours = n_nodes - 1
         chex.assert_tree_shape_suffix(node_features, (self.n_invariant_feat_hidden,))
 
         # Prepare the edge attributes.
         vectors = node_positions[receivers] - node_positions[senders]
-        lengths = safe_norm(vectors, axis=-1, keepdims=False)
+        lengths = safe_norm(vectors, axis=-1, keepdims=True)
         sq_lengths = lengths ** 2
 
         edge_feat_in = jnp.concatenate([node_features[senders], node_features[receivers], sq_lengths], axis=-1)
@@ -79,13 +80,13 @@ class EGCL(nn.Module):
         # Get positional output
         phi_x_out = self.phi_x_torso(m_ij)
         phi_x_out = nn.Dense(
-            n_vectors, w_init=nn.initializers.variance_scaling(self.variance_scaling_init, "fan_avg", "uniform")
+            1, kernel_init=nn.initializers.variance_scaling(self.variance_scaling_init, "fan_avg", "uniform")
         )(phi_x_out)
 
         shifts_ij = (
-            phi_x_out[:, None]
+            phi_x_out
             * vectors
-            / (self.normalization_constant + lengths[:, None])
+            / (self.normalization_constant + lengths)
         )  # scale vectors by messages and
         shifts_i = e3nn.scatter_sum(
             data=shifts_ij, dst=receivers, output_size=n_nodes
@@ -112,7 +113,7 @@ class EGCL(nn.Module):
         return vectors_out, features_out
 
 
-class ECNN(nn.Module):
+class EGNN(nn.Module):
     """Configuration of EGNN."""
     name: str
     n_blocks: int  # number of layers
@@ -124,13 +125,27 @@ class ECNN(nn.Module):
     normalization_constant: float = 1.0
     variance_scaling_init: float = 0.001
 
+    @nn.compact
 
     def __call__(self,
         positions: chex.Array,
         node_features: chex.Array,
         global_features: chex.Array,  # Time embedding.
     ) -> Tuple[chex.Array, chex.Array]:
-        chex.assert_rank(positions, 3)
+        assert positions.ndim in (2, 3)
+        vmap = positions.ndim == 3
+        if vmap:
+            return jax.vmap(self.call_single)(positions, node_features, global_features)
+        else:
+            return self.call_single(positions, node_features, global_features)
+
+
+    def call_single(self,
+        positions: chex.Array,
+        node_features: chex.Array,
+        global_features: chex.Array,  # Time embedding.
+    ) -> Tuple[chex.Array, chex.Array]:
+        chex.assert_rank(positions, 2)
         chex.assert_rank(node_features, 2)
         chex.assert_rank(global_features, 1)
         n_nodes = positions.shape[0]
@@ -143,11 +158,12 @@ class ECNN(nn.Module):
         # Setup torso input.
         vectors = positions - positions.mean(axis=0, keepdims=True)
         initial_vectors = vectors
-        h = nn.Dense(self.n_invariant_feat_hidden)(node_features)
+        h = node_features
 
         # Loop through torso layers.
         for i in range(self.n_blocks):
-            h = jnp.concatenate([h, jnp.repeat(global_features[None], n_nodes, axis=0)])
+            h = jnp.concatenate([h, jnp.repeat(global_features[None], n_nodes, axis=0)], axis=1)
+            h = nn.Dense(self.n_invariant_feat_hidden)(h)
             vectors, h = EGCL(
                 name=str(i),
                 mlp_units=self.mlp_units,
@@ -166,4 +182,3 @@ class ECNN(nn.Module):
             vectors = vectors - initial_vectors
 
         return vectors
-
