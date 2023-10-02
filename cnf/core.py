@@ -45,3 +45,5 @@ class FlowMatchingCNF(NamedTuple):
     apply: VectorFieldApply
     sample_base: Callable[[chex.PRNGKey, int], chex.Array]
     get_x_t_and_conditional_u_t: GetConditionalVectorField
+    log_prob_base: Callable[[chex.Array], chex.Array]
+    sample_and_log_prob_base: Callable[[chex.PRNGKey, Optional[chex.Shape]], Tuple[chex.Array, chex.Array]]

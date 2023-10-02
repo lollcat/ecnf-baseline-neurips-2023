@@ -20,6 +20,7 @@ def flow_matching_loss_fn(
     t = jax.random.uniform(key2, shape=(batch_size,))
     x_t, u_t_conditional = jax.vmap(cnf.get_x_t_and_conditional_u_t)(x0, x_data, t)
     v_t = cnf.apply(params, x_data, t, features)
+    chex.assert_equal_shape((x_t, u_t_conditional, v_t))
 
     loss = jnp.mean((v_t - u_t_conditional)**2)
     info = {}
