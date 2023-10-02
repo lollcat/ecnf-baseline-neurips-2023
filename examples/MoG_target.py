@@ -2,6 +2,7 @@ from typing import Optional, Sequence, Tuple
 
 from functools import partial
 import os
+import itertools
 
 import distrax
 import jax.numpy as jnp
@@ -85,7 +86,7 @@ class VectorNet(nn.Module):
 
 
 def setup_training():
-    lr = 1e-3
+    lr = 1e-4
     dim = 2
     batch_size = 64
     n_iteration = int(1e4)
@@ -98,7 +99,7 @@ def setup_training():
     optimizer = optax.adamw(lr)
 
     sigma_min = 1e-3
-    base_scale = 100
+    base_scale = 5.
     base = distrax.MultivariateNormalDiag(loc=jnp.zeros(dim), scale_diag=jnp.ones(dim)*base_scale)
 
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
@@ -150,17 +151,36 @@ def setup_training():
 
         key, subkey = jax.random.split(key)
         features = None
+
+        # Plot samples.
         n_samples_plotting = 512
         key_batch = jax.random.split(key, n_samples_plotting)
         flow_samples = jax.vmap(sample_cnf, in_axes=(None, None, 0, None))(
             cnf, state.params, key_batch, features)
         fig1, axs = plt.subplots(1)
-        axs.plot(flow_samples[:, 0], flow_samples[:, 1], "o", label="flow samples", alpha=0.2)
+        axs.plot(flow_samples[:, 0], flow_samples[:, 1], "o", label="flow samples", alpha=0.4)
         axs.plot(train_data[:n_samples_plotting, 0], train_data[:n_samples_plotting, 1],
-                 "o", label="target samples", alpha=0.2)
+                 "o", label="target samples", alpha=0.4)
         axs.legend()
 
-        figs = [fig1]
+        fig2, axs = plt.subplots(1, 2, figsize=(10, 5))
+        bound = 8
+        n_points = 10
+        x_points_dim1 = jnp.linspace(-bound, bound, n_points)
+        x_points_dim2 = jnp.linspace(-bound, bound, n_points)
+        x_points = jnp.array(list(itertools.product(x_points_dim1, x_points_dim2)))
+        vectors_t05 = cnf.apply(state.params, x_points, t=jnp.ones(n_points**2)*0.5, features=None)
+        axs[0].quiver(x_points[:, 0], x_points[:, 1], vectors_t05[:, 0], vectors_t05[:, 1])
+        axs[0].set_title(f"model score at t={0.5}")
+        axs[0].plot(train_data[:n_samples_plotting, 0], train_data[:n_samples_plotting, 1],
+                 "o", label="target samples", alpha=0.2)
+        vectors_t001 = cnf.apply(state.params, x_points, t=jnp.ones(n_points ** 2) * 0.01, features=None)
+        axs[1].quiver(x_points[:, 0], x_points[:, 1], vectors_t001[:, 0], vectors_t001[:, 1])
+        axs[1].set_title(f"model score at t={0.01}")
+        axs[1].plot(train_data[:n_samples_plotting, 0], train_data[:n_samples_plotting, 1],
+                 "o", label="target samples", alpha=0.2)
+
+        figs = [fig1, fig2]
         for j, figure in enumerate(figs):
             if save:
                 figure.savefig(
