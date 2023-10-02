@@ -1,36 +1,45 @@
 from typing import Tuple
 
 import os
+import pathlib
+
 import jax.numpy as jnp
 import jax
 import optax
+import wandb
 import chex
 import matplotlib.pyplot as plt
 from jax.flatten_util import ravel_pytree
+import hydra
+from omegaconf import DictConfig
 
 from ecnf.cnf.build_cnf import build_cnf
 from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob
 from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
 from ecnf.utils.loop import TrainConfig, run_training
-from ecnf.utils.loggers import ListLogger
 from ecnf.targets.data import load_lj13
 from ecnf.utils.setup_train_objects import setup_logger
 from ecnf.utils.loggers import WandbLogger
 from ecnf.utils.plotting import bin_samples_by_dist, get_pairwise_distances_for_plotting, get_counts
 
 
-def setup_training():
-    lr = 1e-4
-    batch_size = 8
-    n_iteration = int(1e2)
-    logger = ListLogger()
-    seed = 0
-    n_eval = 5
-    n_samples_plotting = 16
+def setup_training(cfg: DictConfig) -> TrainConfig:
+    lr = cfg.training.lr
+    batch_size = cfg.training.batch_size
+    n_samples_plotting = cfg.training.plot_batch_size
+
+    logger = setup_logger(cfg)
+
+    if isinstance(logger, WandbLogger) and cfg.training.save_in_wandb_dir:
+        save_path = os.path.join(wandb.run.dir, cfg.training.save_dir)
+    else:
+        save_path = cfg.training.save_dir
+
+    pathlib.Path(save_path).mkdir(exist_ok=True, parents=True)
 
 
     train_data_, valid_data_, test_data_ = load_lj13(1000)
-    test_data_ = test_data_[:8]  # TODO: Remove
+    test_data_ = test_data_[:16]  # TODO: Remove
     optimizer = optax.adamw(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
@@ -44,7 +53,15 @@ def setup_training():
 
     n_nodes, dim = train_data_.positions.shape[1:]
 
-    cnf = build_cnf(dim=dim, n_frames=n_nodes)
+    cnf = build_cnf(dim=dim,
+                    n_frames=n_nodes,
+                    sigma_min=cfg.flow.sigma_min,
+                    base_scale=cfg.flow.base_scale,
+                    n_blocks_egnn=cfg.flow.network.n_blocks_egnn,
+                    mlp_units=cfg.flow.network.mlp_units,
+                    n_invariant_feat_hidden=cfg.flow.network.n_invariant_feat_hidden,
+                    time_embedding_dim=cfg.flow.network.time_embedding_dim
+                    )
 
 
     def init_state(key: chex.PRNGKey) -> TrainingState:
@@ -112,7 +129,7 @@ def setup_training():
         ax.stairs(counts_flow, bins_x, label="flow samples", alpha=0.4, fill=True)
         ax.legend()
 
-        figs = [fig1,]
+        figs = [fig1, ]
         for j, figure in enumerate(figs):
             if save:
                 figure.savefig(
@@ -126,25 +143,38 @@ def setup_training():
 
 
     train_config = TrainConfig(
-        n_iteration=n_iteration,
+        n_iteration=cfg.training.n_training_iter,
         logger=logger,
-        seed=seed,
-        n_checkpoints=0,
-        n_eval=n_eval,
+        seed=cfg.training.seed,
+        n_checkpoints=cfg.training.n_checkpoints,
+        n_eval=cfg.training.n_eval,
         init_state=init_state,
         update_state=run_epoch,
         eval_and_plot_fn=eval_and_plot,
-        save=False,
-        save_dir="/tmp"
+        save=cfg.training.save,
+        save_dir=save_path
     )
 
     return train_config
 
 
+@hydra.main(config_path="./config", config_name="lj13.yaml")
+def run(cfg: DictConfig):
+    local = True
+    if local:
+        cfg.logger = DictConfig({"list_logger": None})
+        cfg.training.save = False
+        cfg.training.batch_size = 8
+        cfg.training.n_training_iter = 10
+        cfg.training.plot_batch_size = 16
+        cfg.flow.network.mlp_units = (16,)
+        cfg.flow.network.n_blocks_egnn = 2
+        cfg.flow.network.n_invariant_feat_hidden = 8
+        cfg.flow.network.time_embedding_dim = 6
 
-
+    train_config = setup_training(cfg)
+    run_training(train_config)
 
 
 if __name__ == '__main__':
-    config = setup_training()
-    run_training(config)
+    run()

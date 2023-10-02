@@ -1,5 +1,5 @@
 """Build's CNF for application to Cartesian coordinates of molecules."""
-from typing import Callable
+from typing import Callable, Sequence
 
 from functools import partial
 
@@ -34,11 +34,16 @@ def get_timestep_embedding(timesteps: chex.Array, embedding_dim: int):
 def build_cnf(
         n_frames: int,
         dim: int,
+        sigma_min: float,
+        base_scale: float,
+        n_blocks_egnn: int,
+        mlp_units: Sequence[int],
+        n_invariant_feat_hidden: int,
+        time_embedding_dim: int,
 ):
     flat_dim = n_frames * dim
 
-    sigma_min = 1e-3
-    base_scale = 5.
+
     base = distrax.MultivariateNormalDiag(loc=jnp.zeros(flat_dim), scale_diag=jnp.ones(flat_dim)*base_scale)
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
 
@@ -57,12 +62,12 @@ def build_cnf(
 
             positions = jnp.reshape(positions, (positions.shape[0], n_frames, dim))
             node_features = jnp.reshape(node_features, (node_features.shape[0], n_frames, -1))
-            time_embedding = get_timestep_embedding(time, 32)
+            time_embedding = get_timestep_embedding(time, time_embedding_dim)
 
             net = EGNN(
-                n_blocks=2,
-                mlp_units=(16,),
-                n_invariant_feat_hidden=2,
+                n_blocks=n_blocks_egnn,
+                mlp_units=mlp_units,
+                n_invariant_feat_hidden=n_invariant_feat_hidden,
             )
 
             vectors = net(positions, node_features, time_embedding)
