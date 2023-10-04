@@ -12,9 +12,9 @@ import chex
 import matplotlib.pyplot as plt
 from flax import linen as nn
 
-from cnf.core import FlowMatchingCNF, optimal_transport_conditional_vf
-from cnf.sample_and_log_prob import sample_cnf, get_log_prob
-from cnf.gradient_step import TrainingState, flow_matching_update_fn
+from ecnf.cnf.core import FlowMatchingCNF, optimal_transport_conditional_vf
+from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob
+from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
 from ecnf.utils.loop import TrainConfig, run_training
 from ecnf.utils.loggers import ListLogger
 

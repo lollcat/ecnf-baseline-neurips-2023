@@ -1,2 +1,16 @@
 flax
 diffrax
+distrax
+chex
+optax
+matplotlib
+tqdm
+pandas
+jupyterlab
+wandb
+hydra-core
+hydra-joblib-launcher
+joblib
+mdtraj
+tables
+e3nn-jax
