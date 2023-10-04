@@ -10,16 +10,16 @@ from ecnf.targets.data import load_dw4, FullGraphSample
 from examples.setup_training import setup_training
 
 
-def load_dataset(train_set_size: int, valid_set_size: Optional[int], final_run: bool):
+def load_dataset(train_set_size: int, valid_set_size: Optional[int], final_run: bool) -> Tuple[FullGraphSample, FullGraphSample]:
     train, valid, test = load_dw4(train_set_size)
     if not final_run:
         return train, valid[:valid_set_size]
     else:
         return train, test[:valid_set_size]
 
-@hydra.main(config_path="./config", config_name="lj13.yaml")
+@hydra.main(config_path="./config", config_name="dw4.yaml")
 def run(cfg: DictConfig):
-    local = False
+    local = True
     if local:
         cfg.logger = DictConfig({"list_logger": None})
         cfg.training.save = False
