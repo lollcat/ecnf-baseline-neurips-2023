@@ -19,7 +19,7 @@ training:
   lr: 2e-4
   n_training_iter: 300
   plot_batch_size: 64
-  eval_batch_size: null # Currently unused.
+  eval_batch_size: 64
   train_set_size: 1000
   test_set_size: 1000
   final_run: false

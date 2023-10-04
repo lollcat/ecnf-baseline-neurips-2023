@@ -20,12 +20,15 @@ def load_dataset(train_set_size: int, valid_set_size: int, final_run: bool) -> T
 
 @hydra.main(config_path="./config", config_name="lj13.yaml")
 def run(cfg: DictConfig):
-    local = True
+    local = False
     if local:
         cfg.logger = DictConfig({"list_logger": None})
         cfg.training.save = False
         cfg.training.batch_size = 8
+        cfg.training.eval_batch_size = 9
         cfg.training.n_training_iter = 10
+        cfg.training.train_set_size = 80
+        cfg.training.test_set_size = 80
         cfg.training.plot_batch_size = 16
         cfg.flow.network.mlp_units = (16,)
         cfg.flow.network.n_blocks_egnn = 2

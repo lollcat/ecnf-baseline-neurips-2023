@@ -2,6 +2,7 @@ from typing import Tuple, Callable
 
 import os
 import pathlib
+from functools import partial
 
 import jax.numpy as jnp
 import jax
@@ -20,7 +21,7 @@ from ecnf.utils.loop import TrainConfig
 from ecnf.utils.setup_train_objects import setup_logger
 from ecnf.utils.loggers import WandbLogger
 from ecnf.utils.plotting import bin_samples_by_dist, get_pairwise_distances_for_plotting, get_counts
-
+from ecnf.utils.evaluation import eval_fn
 
 def setup_training(cfg: DictConfig,
                    load_dataset: Callable[[int, int], Tuple[FullGraphSample, FullGraphSample]]) -> TrainConfig:
@@ -39,7 +40,6 @@ def setup_training(cfg: DictConfig,
 
 
     train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.train_set_size)
-    test_data_ = test_data_[:32]  # TODO: minibatch test set.
     optimizer = optax.adamw(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
@@ -92,10 +92,9 @@ def setup_training(cfg: DictConfig,
         return state, info
 
 
-    def eval_and_plot(
-            state: TrainingState, key: chex.PRNGKey,
-            iteration_n: int, save: bool, plots_dir: str) -> dict:
+    def eval_single_fn(data: chex.ArrayTree, key: chex.PRNGKey, mask: chex.Array, state: TrainingState):
         key1, key2 = jax.random.split(key)
+        test_pos_flat, test_features_flat = data
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
         log_prob = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(cnf, state.params, test_pos_flat, key_batch,
                                                                             test_features_flat)
@@ -104,11 +103,23 @@ def setup_training(cfg: DictConfig,
             test_log_lik=jnp.mean(log_prob)
         )
 
-
         log_prob_approx = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
             cnf, state.params, test_pos_flat, key_batch, test_features_flat, True)
         info.update(test_approx_log_lik=jnp.mean(log_prob_approx))
+        return info
 
+
+    def eval_and_plot(
+            state: TrainingState, key: chex.PRNGKey,
+            iteration_n: int, save: bool, plots_dir: str) -> dict:
+
+
+        info, further_info, flat_mask = eval_fn(
+            x = (test_pos_flat, test_features_flat),
+            key=key,
+            eval_on_test_batch_fn=partial(eval_single_fn, state=state),
+            batch_size=cfg.training.eval_batch_size,
+        )
 
         key, subkey = jax.random.split(key)
         key_batch = jax.random.split(key, n_samples_plotting)
