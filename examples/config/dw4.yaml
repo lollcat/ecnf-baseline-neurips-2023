@@ -17,7 +17,7 @@ training:
   batch_size: 64
   seed: 0
   lr: 2e-4
-  n_training_iter: 300
+  n_training_iter: 100
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: 1000
