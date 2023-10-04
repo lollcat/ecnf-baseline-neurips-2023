@@ -102,17 +102,17 @@ def setup_training(
         key1, key2 = jax.random.split(key)
         test_pos_flat, test_features_flat = data
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
-        log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(cnf, state.params, test_pos_flat, key_batch,
-                                                                            test_features_flat)
+
+        if cfg.training.eval_exact_log_prob:
+            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(cnf, state.params, test_pos_flat, key_batch,
+                                                                                test_features_flat)
+        else:
+            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True)
         info = {}
         info.update(
             test_log_lik=jnp.mean(log_q)
         )
-
-        log_prob_approx = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
-            cnf, state.params, test_pos_flat, key_batch, test_features_flat, True)
-
-        info.update(test_approx_log_lik=jnp.mean(log_prob_approx))
 
         if target_log_prob_fn is not None:
             test_pos = jnp.reshape(test_pos_flat, (-1, n_nodes, dim))

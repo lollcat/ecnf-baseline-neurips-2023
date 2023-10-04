@@ -22,6 +22,7 @@ training:
   eval_batch_size: 64
   train_set_size: 1000
   test_set_size: 1000
+  eval_exact_log_prob: true
   final_run: false
   n_checkpoints: 0
   n_eval: 5
