@@ -13,3 +13,4 @@ hydra-joblib-launcher
 joblib
 mdtraj
 tables
+e3nn-jax
