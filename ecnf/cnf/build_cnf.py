@@ -12,6 +12,7 @@ from flax import linen as nn
 
 from ecnf.cnf.core import FlowMatchingCNF, optimal_transport_conditional_vf
 from ecnf.nets.egnn import EGNN
+from ecnf.cnf.zero_com_base import FlatZeroCoMGaussian
 
 
 def get_timestep_embedding(timesteps: chex.Array, embedding_dim: int):
@@ -41,12 +42,9 @@ def build_cnf(
         n_invariant_feat_hidden: int,
         time_embedding_dim: int,
 ):
-    flat_dim = n_frames * dim
 
-
-    base = distrax.MultivariateNormalDiag(loc=jnp.zeros(flat_dim), scale_diag=jnp.ones(flat_dim)*base_scale)
+    base = FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames)
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
-
 
     class FlatEgnn(nn.Module):
 
