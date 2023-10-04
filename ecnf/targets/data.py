@@ -25,6 +25,33 @@ def positional_dataset_only_to_full_graph(positions: chex.Array) -> FullGraphSam
     return FullGraphSample(positions=positions, features=features)
 
 
+def load_dw4(
+    train_set_size: int = 1000,
+    val_set_size: int = 1000,
+    test_set_size: int = 1000,
+    path: Optional[Union[Path, str]] = None,
+) -> Tuple[FullGraphSample, FullGraphSample, FullGraphSample]:
+    # dataset from https://github.com/vgsatorras/en_flows
+    # Loading following https://github.com/vgsatorras/en_flows/blob/main/dw4_experiment/dataset.py.
+
+    if path is None:
+        here = Path(__file__).parent
+        path = here / "data"
+    path = Path(path)
+    fpath = path / "dw4-dataidx.npy"
+    dataset = jnp.asarray(np.load(fpath, allow_pickle=True)[0], dtype=float)
+    dataset = jnp.reshape(dataset, (-1, 4, 2))
+
+    train_set = dataset[:train_set_size]
+    val_set = dataset[-test_set_size - val_set_size : -test_set_size]
+    test_set = dataset[-test_set_size:]
+    return (
+        positional_dataset_only_to_full_graph(train_set),
+        positional_dataset_only_to_full_graph(val_set),
+        positional_dataset_only_to_full_graph(test_set),
+    )
+
+
 def load_lj13(
     train_set_size: int = 1000, path: Optional[Union[Path, str]] = None
 ) -> Tuple[FullGraphSample, FullGraphSample, FullGraphSample]:
