@@ -20,8 +20,8 @@ training:
   n_training_iter: 300
   plot_batch_size: 64
   eval_batch_size: 64
-  train_set_size: 1000
-  test_set_size: 1000
+  train_set_size: null
+  test_set_size: null
   eval_n_model_samples: 1000
   eval_exact_log_prob: true
   final_run: false

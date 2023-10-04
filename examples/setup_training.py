@@ -154,7 +154,7 @@ def setup_training(
             x=(test_pos_flat, test_features_flat),
             key=key,
             eval_on_test_batch_fn=partial(eval_on_data_batch_fn, state=state),
-            eval_batch_free_fn=partial(eval_batch_free_fn, state=state),
+            eval_batch_free_fn=partial(eval_batch_free_fn, state=state) if eval_batch_free_fn is not None else None,
             batch_size=cfg.training.eval_batch_size,
         )
 
