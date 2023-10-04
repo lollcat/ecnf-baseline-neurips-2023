@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 
 from ecnf.utils.loop import run_training
 from ecnf.targets.data import load_lj13, FullGraphSample
+from ecnf.targets.target_energy.leonard_jones import log_prob_fn
 from examples.setup_training import setup_training
 
 
@@ -37,7 +38,9 @@ def run(cfg: DictConfig):
 
     train_config = setup_training(
         cfg,
-        load_dataset=partial(load_dataset, final_run=cfg.training.final_run),)
+        load_dataset=partial(load_dataset, final_run=cfg.training.final_run),
+        target_log_prob_fn=log_prob_fn
+    )
     run_training(train_config)
 
 
