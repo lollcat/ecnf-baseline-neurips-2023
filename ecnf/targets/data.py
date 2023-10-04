@@ -4,6 +4,9 @@ from pathlib import Path
 import jax.numpy as jnp
 import numpy as np
 import chex
+import mdtraj
+
+from ecnf.targets.qm9_download_data.dataset import qm9pos_download_and_save_data
 
 GraphFeatures = chex.Array  # Non-positional information.
 Positions = chex.Array
@@ -86,3 +89,67 @@ def load_lj13(
         positional_dataset_only_to_full_graph(val_data),
         positional_dataset_only_to_full_graph(test_data),
     )
+
+def load_qm9(
+    train_set_size: Optional[int] = None, path: Optional[Union[Path, str]] = None
+) -> Tuple[FullGraphSample, FullGraphSample, FullGraphSample]:
+    if path is None:
+        here = Path(__file__).parent
+        path = here / "data"
+    base_path = Path(path)
+    fpath_train = base_path / "qm9pos_train.npy"
+    fpath_val = base_path / "qm9pos_valid.npy"
+    fpath_test = base_path / "qm9pos_test.npy"
+
+    if not fpath_train.exists():
+        qm9pos_download_and_save_data(base_path=str(base_path))
+    train_data = np.load(str(fpath_train))
+
+    if train_set_size is not None:
+        assert train_set_size <= len(train_data)
+    train_data = train_data[:train_set_size]
+    test_data = np.load(str(fpath_test))
+    valid_data = np.load(str(fpath_val))
+
+    train_data = jnp.asarray(train_data, dtype=float)
+    test_data = jnp.asarray(test_data, dtype=float)
+    valid_data = jnp.asarray(valid_data, dtype=float)
+
+    return (
+        positional_dataset_only_to_full_graph(train_data),
+        positional_dataset_only_to_full_graph(valid_data),
+        positional_dataset_only_to_full_graph(test_data),
+    )
+
+
+def load_aldp(
+    train_path: Optional[str] = None,
+    val_path: Optional[str] = None,
+    test_path: Optional[str] = None,
+    train_n_points=None,
+    val_n_points=None,
+    test_n_points=None,
+    # atom_type_encoding_only: bool = True
+) -> Tuple[FullGraphSample, FullGraphSample, FullGraphSample]:
+    paths = [train_path, val_path, test_path]
+    n_points = [train_n_points, val_n_points, test_n_points]
+    datasets = [None, None, None]
+
+    for i in range(3):
+        if paths[i] is not None:
+            traj = mdtraj.load(paths[i])
+            # if atom_type_encoding_only:
+            #     atom_encodings = {"carbon": 0, "hydrogen": 1, "oxygen": 2, "nitrogen": 3}
+            #     features = jnp.array([atom_encodings[atom.element.name] for atom in traj.topology._atoms],
+            #                          dtype=int)[:, None]
+            # else:
+            features = jnp.arange(traj.n_atoms, dtype=int)[:, None]
+            positions = traj.xyz
+            if n_points[i] is not None:
+                positions = positions[: n_points[i]]
+            datasets[i] = FullGraphSample(
+                positions=positions,
+                features=jnp.repeat(features[None, :], positions.shape[0], axis=0),
+            )
+    return tuple(datasets)
+
