@@ -16,7 +16,7 @@ from omegaconf import DictConfig
 
 from ecnf.targets.data import FullGraphSample
 from ecnf.cnf.build_cnf import build_cnf
-from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob
+from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob, sample_and_log_prob_cnf
 from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
 from ecnf.utils.loop import TrainConfig
 from ecnf.utils.setup_train_objects import setup_logger
@@ -97,7 +97,29 @@ def setup_training(
         return state, info
 
 
-    def eval_single_fn(data: chex.ArrayTree, key: chex.PRNGKey, mask: chex.Array, state: TrainingState) -> \
+    if target_log_prob_fn:
+        def eval_batch_free_fn(key: chex.PRNGKey, state: TrainingState) -> dict:
+            def forward(carry: None, xs: chex.PRNGKey):
+                key = xs
+                samples, log_q = sample_and_log_prob_cnf(cnf, state.params, key, features=train_features_flat[0],
+                                                            approx=cfg.training.eval_exact_log_prob)
+                samples = jnp.reshape(samples, (-1, n_nodes, dim))
+                log_p = target_log_prob_fn(samples)
+                log_w = log_p - log_q
+                return None, log_w
+
+            n_batches = cfg.training.eval_n_model_samples
+            _, log_w = jax.lax.scan(forward, init=None, xs=jax.random.split(key, n_batches))
+            log_w = log_w.flatten()
+            rv_ess = 1 / jnp.sum(jax.nn.softmax(log_w) ** 2) / log_w.shape[0]
+            info = {}
+            info.update(rv_ess=rv_ess)
+            return info
+    else:
+        eval_batch_free_fn = None
+
+
+    def eval_on_data_batch_fn(data: chex.ArrayTree, key: chex.PRNGKey, mask: chex.Array, state: TrainingState) -> \
             Tuple[chex.Array, dict]:
         key1, key2 = jax.random.split(key)
         test_pos_flat, test_features_flat = data
@@ -123,17 +145,16 @@ def setup_training(
         return log_w, info
 
 
-
-
     def eval_and_plot(
             state: TrainingState, key: chex.PRNGKey,
             iteration_n: int, save: bool, plots_dir: str) -> dict:
 
 
         info, log_w_fwd, flat_mask = eval_fn(
-            x = (test_pos_flat, test_features_flat),
+            x=(test_pos_flat, test_features_flat),
             key=key,
-            eval_on_test_batch_fn=partial(eval_single_fn, state=state),
+            eval_on_test_batch_fn=partial(eval_on_data_batch_fn, state=state),
+            eval_batch_free_fn=partial(eval_batch_free_fn, state=state),
             batch_size=cfg.training.eval_batch_size,
         )
 

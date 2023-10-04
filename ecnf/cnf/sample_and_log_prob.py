@@ -86,6 +86,8 @@ def sample_and_log_prob_cnf(
         features: Optional[chex.Array] = None,
         approx: bool = False) -> Tuple[chex.Array, chex.Array]:
 
+    features = features[None] if features is not None else None
+
     if not approx:
         def joint_vector_field(t: chex.Array, y: chex.Array, args: None) -> Tuple[chex.Array, chex.Array]:
             """For inverting flow, keeping track of volume change."""
