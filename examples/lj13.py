@@ -39,7 +39,7 @@ def setup_training(cfg: DictConfig) -> TrainConfig:
 
 
     train_data_, valid_data_, test_data_ = load_lj13(1000)
-    test_data_ = test_data_[:16]  # TODO: Remove
+    test_data_ = test_data_[:32]  # TODO: minibatch test set.
     optimizer = optax.adamw(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
@@ -160,7 +160,7 @@ def setup_training(cfg: DictConfig) -> TrainConfig:
 
 @hydra.main(config_path="./config", config_name="lj13.yaml")
 def run(cfg: DictConfig):
-    local = True
+    local = False
     if local:
         cfg.logger = DictConfig({"list_logger": None})
         cfg.training.save = False
