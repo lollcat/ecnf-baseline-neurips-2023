@@ -4,7 +4,7 @@ hydra:
 
 flow:
   sigma_min: 0.01
-  base_scale: 1.
+  base_scale: 2.
   network:
     type: egnn
     mlp_units: [256, 256, 256]
@@ -37,7 +37,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_non_exact_density_Bigger
+    name: qm9_fm_non_exact_density_Bigger_WiderBase
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
