@@ -43,7 +43,12 @@ def build_cnf(
         time_embedding_dim: int,
 ):
 
-    base = FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames)
+    base = distrax.Transformed(distribution=FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames),
+                               bijector=distrax.Block(
+                                   distrax.ScalarAffine(
+                                   shift=jnp.zeros(dim*n_frames), scale=jnp.ones(dim*n_frames)*base_scale),
+                                   ndims=1
+                               ))
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
 
     class FlatEgnn(nn.Module):
