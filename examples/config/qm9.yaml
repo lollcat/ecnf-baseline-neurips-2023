@@ -3,7 +3,7 @@ hydra:
     chdir: false
 
 flow:
-  sigma_min: 0.01
+  sigma_min: 0.0001
   base_scale: 2.
   network:
     type: egnn
@@ -37,7 +37,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_non_exact_density_smaller
+    name: qm9_fm_non_exact_density_smaller_lowerSigmaMin
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
