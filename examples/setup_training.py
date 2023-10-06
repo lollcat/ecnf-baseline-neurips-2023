@@ -45,7 +45,7 @@ def setup_training(
 
 
     train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.train_set_size)
-    optimizer = optax.adamw(lr)
+    optimizer = optax.adam(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
     ravel_pytree_batched = jax.vmap(lambda x: ravel_pytree(x)[0])
