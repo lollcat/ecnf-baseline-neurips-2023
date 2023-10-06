@@ -8,7 +8,7 @@ flow:
   network:
     type: egnn
     mlp_units: [128, 128, 128]
-    n_blocks_egnn: 3
+    n_blocks_egnn: 4
     n_invariant_feat_hidden: 128
     time_embedding_dim: 32
 
@@ -37,7 +37,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_non_exact_density_BiggerNN_EvenlowerSigmaMin_longerAdam
+    name: qm9_fm_non_exact_density_BiggerNN_EvenlowerSigmaMin_longerAdam_4blocks
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
