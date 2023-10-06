@@ -16,7 +16,7 @@ flow:
 training:
   batch_size: 64
   seed: 0
-  lr: 2e-4
+  lr: 1e-3
   n_training_iter: 600
   plot_batch_size: 64
   eval_batch_size: 64
@@ -37,7 +37,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_non_exact_density_smaller_lowerSigmaMin
+    name: qm9_fm_non_exact_density_smaller_lowerSigmaMin_HighLR
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
