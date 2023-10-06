@@ -4,20 +4,20 @@ hydra:
 
 flow:
   sigma_min: 0.01
-  base_scale: 4.
+  base_scale: 2.
   network:
     type: egnn
     mlp_units: [256, 256, 256]
     n_blocks_egnn: 4
-    n_invariant_feat_hidden: 64
-    time_embedding_dim: 8
+    n_invariant_feat_hidden: 128
+    time_embedding_dim: 32
 
 
 training:
   batch_size: 64
   seed: 0
   lr: 2e-4
-  n_training_iter: 300
+  n_training_iter: 600
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: null
@@ -25,8 +25,8 @@ training:
   eval_n_model_samples: null # Unused as there is no energy function.
   eval_exact_log_prob: false
   final_run: false
-  n_checkpoints: 0
-  n_eval: 5
+  n_checkpoints: 5
+  n_eval: 10
   save: true
   save_dir: ''
   save_in_wandb_dir: true
@@ -37,7 +37,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_non_exact_density_Bigger_BaseScale4
+    name: qm9_fm_non_exact_density_Bigger_BaseScale2
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
