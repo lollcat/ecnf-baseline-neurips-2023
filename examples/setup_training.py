@@ -126,8 +126,8 @@ def setup_training(
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
 
         if cfg.training.eval_exact_log_prob:
-            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(cnf, state.params, test_pos_flat, key_batch,
-                                                                                test_features_flat)
+            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat)
         else:
             log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
                 cnf, state.params, test_pos_flat, key_batch, test_features_flat, True)
