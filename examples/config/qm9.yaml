@@ -23,7 +23,7 @@ training:
   train_set_size: null
   test_set_size: null
   eval_n_model_samples: null # Unused as there is no energy function.
-  eval_exact_log_prob: false
+  eval_exact_log_prob: true
   final_run: false
   n_checkpoints: 5
   n_eval: 10
@@ -37,7 +37,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_non_exact_density_BiggerNN_EvenlowerSigmaMin_longerAdam_5blocks
+    name: qm9_fm_ExactDensity_BiggerNN_EvenlowerSigmaMin_longerAdam_5blocks
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
