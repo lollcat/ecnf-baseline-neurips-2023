@@ -17,7 +17,7 @@ training:
   batch_size: 64
   seed: 0
   lr: 2e-4
-  n_training_iter: 900
+  n_training_iter: 2000
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: null
@@ -38,7 +38,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_BIGGERNN
+    name: qm9_fm_BIGGERNN_TRAIN_LONG
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
