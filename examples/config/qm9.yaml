@@ -38,7 +38,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_ExactDensity_BiggerNN_EvenlowerSigmaMin_longerAdam_5blocks_VariableStepSizeEval
+    name: qm9_fm_ApproxDensity_BiggerNN_EvenlowerSigmaMin_longerAdam_5blocks_VariableStepSizeEval
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
