@@ -102,7 +102,9 @@ def setup_training(
             def forward(carry: None, xs: chex.PRNGKey):
                 key = xs
                 samples, log_q = sample_and_log_prob_cnf(cnf, state.params, key, features=train_features_flat[0],
-                                                            approx=cfg.training.eval_exact_log_prob)
+                                                        approx=cfg.training.eval_exact_log_prob,
+                                                        use_fixed_step_size=cfg.training.use_fixed_step_size
+                                                         )
                 samples = jnp.reshape(samples, (-1, n_nodes, dim))
                 log_p = target_log_prob_fn(samples)
                 log_w = log_p - log_q
@@ -126,11 +128,13 @@ def setup_training(
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
 
         if cfg.training.eval_exact_log_prob:
-            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(
-                cnf, state.params, test_pos_flat, key_batch, test_features_flat)
-        else:
             log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
-                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True)
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat,
+                cfg.training.use_fixed_step_size
+            )
+        else:
+            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
         info = {}
         info.update(
             test_log_lik=jnp.mean(log_q)

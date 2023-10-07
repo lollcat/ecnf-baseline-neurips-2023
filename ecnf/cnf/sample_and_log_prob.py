@@ -10,9 +10,9 @@ from ecnf.cnf.core import FlowMatchingCNF
 
 def sample_cnf(cnf: FlowMatchingCNF, params: chex.ArrayTree,
                key: chex.PRNGKey, features: Optional[chex.Array] = None,
+               use_fixed_step_size: bool = False,
                rtol: float = 1e-5,
                atol: float = 1e-5,
-               use_fixed_step_size: bool = False,
                step_size: float = 0.05,
                ) -> chex.Array:
 
@@ -44,9 +44,9 @@ def get_log_prob(
         key: chex.PRNGKey,
         features: Optional[chex.Array] = None,
         approx: bool = False,
+        use_fixed_step_size: bool = False,
         rtol: float = 1e-5,
         atol: float = 1e-5,
-        use_fixed_step_size: bool = False,
         step_size: float = 0.05,
 ) -> chex.Array:
     features = features[None] if features is not None else None
@@ -98,9 +98,9 @@ def sample_and_log_prob_cnf(
         key: chex.PRNGKey,
         features: Optional[chex.Array] = None,
         approx: bool = False,
+        use_fixed_step_size: bool = False,
         rtol: float = 1e-5,
         atol: float = 1e-5,
-        use_fixed_step_size: bool = False,
         step_size: float = 0.05,
 ) -> Tuple[chex.Array, chex.Array]:
 

@@ -37,7 +37,8 @@ def run(cfg: DictConfig):
 
     train_config = setup_training(
         cfg,
-        load_dataset=partial(load_dataset, final_run=cfg.training.final_run),)
+        load_dataset=partial(load_dataset, final_run=cfg.training.final_run),
+    )
     run_training(train_config)
 
 
