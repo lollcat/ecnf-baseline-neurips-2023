@@ -9,7 +9,7 @@ from flax import linen as nn
 
 from ecnf.utils.graph import get_senders_and_receivers_fully_connected
 from ecnf.utils.numerical import safe_norm
-from ecnf.nets.mlp import StableMLP
+from ecnf.nets.mlp import StableMLP, MLP
 
 
 class EGCL(nn.Module):
@@ -31,17 +31,19 @@ class EGCL(nn.Module):
     activation_fn: Callable
     residual_h: bool
     residual_x: bool
+    stable_mlp: bool
     normalization_constant: float
     variance_scaling_init: float
 
     def setup(self) -> None:
         mlp_units = self.mlp_units
         activation_fn = self.activation_fn
+        mlp_net = StableMLP if self.stable_mlp else MLP
+        self._mlp_net = mlp_net
+        self.phi_e = mlp_net(mlp_units, activation=activation_fn, activate_final=True)
 
-        self.phi_e = StableMLP(mlp_units, activation=activation_fn, activate_final=True)
-
-        self.phi_x_torso = StableMLP(mlp_units, activate_final=True, activation=activation_fn)
-        self.phi_h = StableMLP((*mlp_units, self.n_invariant_feat_hidden), activate_final=False,
+        self.phi_x_torso = mlp_net(mlp_units, activate_final=True, activation=activation_fn)
+        self.phi_h = mlp_net((*mlp_units, self.n_invariant_feat_hidden), activate_final=False,
                                  activation=activation_fn)
 
     @nn.compact
@@ -120,13 +122,13 @@ class EGNN(nn.Module):
     n_invariant_feat_hidden: int
     name: Optional[str] = None
     activation_fn: Callable = jax.nn.silu
+    stable_mlp: bool = False
     residual_h: bool = True
     residual_x: bool = True
     normalization_constant: float = 1.0
     variance_scaling_init: float = 0.001
 
     @nn.compact
-
     def __call__(self,
         positions: chex.Array,
         node_features: chex.Array,
