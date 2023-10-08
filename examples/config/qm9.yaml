@@ -14,9 +14,14 @@ flow:
 
 
 training:
+  optimizer:
+      use_schedule: true
+      init_lr: 2e-4
+      peak_lr: 1e-3
+      end_lr: 1e-5
+      n_iter_warmup: 10
   batch_size: 64
   seed: 0
-  lr: 2e-4
   n_training_iter: 2000
   plot_batch_size: 64
   eval_batch_size: 64
@@ -38,7 +43,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_TRAIN_LONG_4blocks
+    name: qm9_fm_TRAIN_LONG_4blocks_lr_schedule
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]

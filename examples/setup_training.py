@@ -30,7 +30,6 @@ def setup_training(
         load_dataset: Callable[[int, int], Tuple[FullGraphSample, FullGraphSample]],
         target_log_prob_fn: Optional[Callable[[chex.Array], chex.Array]] = None
 ) -> TrainConfig:
-    lr = cfg.training.lr
     batch_size = cfg.training.batch_size
     n_samples_plotting = cfg.training.plot_batch_size
 
@@ -45,6 +44,20 @@ def setup_training(
 
 
     train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.train_set_size)
+
+    optimizer_config = cfg.training.optimizer
+    if optimizer_config.use_schedule:
+        n_batches_per_epoch = train_data_.positions.shape[0] // batch_size
+        n_iter_total = cfg.training.n_training_iter * n_batches_per_epoch
+        lr = optax.warmup_cosine_decay_schedule(
+                init_value=float(optimizer_config.init_lr),
+                peak_value=float(optimizer_config.peak_lr),
+                end_value=float(optimizer_config.end_lr),
+                warmup_steps=optimizer_config.n_iter_warmup,
+                decay_steps=n_iter_total
+                )
+    else:
+        lr = optimizer_config.init_lr
     optimizer = optax.adam(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
