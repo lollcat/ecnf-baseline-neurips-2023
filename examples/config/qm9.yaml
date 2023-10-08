@@ -10,7 +10,7 @@ flow:
     mlp_units: [512, 512, 512, 512]
     n_blocks_egnn: 3
     n_invariant_feat_hidden: 256
-    time_embedding_dim: 32
+    time_embedding_dim: 128
 
 
 training:
@@ -43,7 +43,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_TRAIN_LONG_FAT3blocks_lr_schedule_VanillaMLP
+    name: qm9_fm_TRAIN_LONG_FAT3blocks_lr_schedule_VanillaMLP_128Time
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
