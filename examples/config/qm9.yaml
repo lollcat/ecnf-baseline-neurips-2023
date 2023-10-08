@@ -17,7 +17,7 @@ training:
   optimizer:
       use_schedule: true
       init_lr: 2e-4
-      peak_lr: 1e-3
+      peak_lr: 2e-4
       end_lr: 1e-5
       n_iter_warmup: 10
   batch_size: 64
