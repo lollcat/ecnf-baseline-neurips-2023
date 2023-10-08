@@ -174,7 +174,8 @@ class EGNN(nn.Module):
                 residual_h=self.residual_h,
                 residual_x=self.residual_x,
                 normalization_constant=self.normalization_constant,
-                variance_scaling_init=self.variance_scaling_init
+                variance_scaling_init=self.variance_scaling_init,
+                stable_mlp=self.stable_mlp,
                               )(vectors, h, senders, receivers)
 
         chex.assert_shape(vectors, (n_nodes, dim))
