@@ -20,7 +20,7 @@ training:
       peak_lr: 2e-4
       end_lr: 1e-5
       n_iter_warmup: 10
-  batch_size: 64
+  batch_size: 32
   seed: 0
   n_training_iter: 2000
   plot_batch_size: 64
