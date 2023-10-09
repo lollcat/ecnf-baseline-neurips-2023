@@ -27,8 +27,7 @@ def get_timestep_embedding(timesteps: chex.Array, embedding_dim: int):
     emb = jnp.exp(jnp.arange(half_dim) * -emb)
     emb = timesteps[:, None] * emb[None, :]
     emb = jnp.concatenate([jnp.sin(emb), jnp.cos(emb)], axis=1)
-    # if embedding_dim % 2 == 1:  # zero pad
-    #     emb = jax.lax.pad(emb, 0, ((0, 0, 0), (0, 1, 0)))
+
     assert emb.shape == (timesteps.shape[0], embedding_dim)
     return emb
 
