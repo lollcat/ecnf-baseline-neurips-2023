@@ -3,30 +3,36 @@ hydra:
     chdir: false
 
 flow:
-  sigma_min: 0.01
-  base_scale: 1.
+  sigma_min: 0.000001
+  base_scale: 2.
   network:
     type: egnn
-    mlp_units: [128, 128, 128] # [256, 256, 256, 256]
-    n_blocks_egnn: 3
-    n_invariant_feat_hidden: 64
-    time_embedding_dim: 8
+    mlp_units: [256, 256, 256]
+    n_blocks_egnn: 4
+    n_invariant_feat_hidden: 256
+    time_embedding_dim: 32
 
 
 training:
+  optimizer:
+      use_schedule: true
+      init_lr: 2e-4
+      peak_lr: 2e-4
+      end_lr: 1e-6
+      n_iter_warmup: 10
   batch_size: 64
   seed: 0
-  lr: 2e-4
-  n_training_iter: 300
+  n_training_iter: 4000
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: null
   test_set_size: null
-  eval_n_model_samples: 1000
-  eval_exact_log_prob: true
+  eval_n_model_samples: null # Unused as there is no energy function.
+  eval_exact_log_prob: false
+  use_fixed_step_size: false
   final_run: false
-  n_checkpoints: 0
-  n_eval: 5
+  n_checkpoints: 5
+  n_eval: 10
   save: true
   save_dir: ''
   save_in_wandb_dir: true
@@ -37,7 +43,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm
+    name: qm9_fm_longer_train_more_invs
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]

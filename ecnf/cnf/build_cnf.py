@@ -27,8 +27,7 @@ def get_timestep_embedding(timesteps: chex.Array, embedding_dim: int):
     emb = jnp.exp(jnp.arange(half_dim) * -emb)
     emb = timesteps[:, None] * emb[None, :]
     emb = jnp.concatenate([jnp.sin(emb), jnp.cos(emb)], axis=1)
-    # if embedding_dim % 2 == 1:  # zero pad
-    #     emb = jax.lax.pad(emb, 0, ((0, 0, 0), (0, 1, 0)))
+
     assert emb.shape == (timesteps.shape[0], embedding_dim)
     return emb
 
@@ -43,7 +42,12 @@ def build_cnf(
         time_embedding_dim: int,
 ):
 
-    base = FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames)
+    base = distrax.Transformed(distribution=FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames),
+                               bijector=distrax.Block(
+                                   distrax.ScalarAffine(
+                                   shift=jnp.zeros(dim*n_frames), scale=jnp.ones(dim*n_frames)*base_scale),
+                                   ndims=1
+                               ))
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
 
     class FlatEgnn(nn.Module):

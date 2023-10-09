@@ -1,4 +1,4 @@
-from typing import Tuple, Callable, Optional
+from typing import Tuple, Callable, Optional, Sequence
 
 import os
 import pathlib
@@ -15,6 +15,7 @@ from jax.flatten_util import ravel_pytree
 from omegaconf import DictConfig
 
 from ecnf.targets.data import FullGraphSample
+from ecnf.cnf.core import FlowMatchingCNF
 from ecnf.cnf.build_cnf import build_cnf
 from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob, sample_and_log_prob_cnf
 from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
@@ -25,12 +26,52 @@ from ecnf.utils.plotting import bin_samples_by_dist, get_pairwise_distances_for_
 from ecnf.utils.evaluation import eval_fn, calculate_forward_ess
 
 
+Plotter = Callable[[TrainingState, FullGraphSample, chex.PRNGKey], Sequence[plt.figure]]
+
+
+def setup_default_plotter(
+        cnf: FlowMatchingCNF,
+        n_nodes: int,
+        dim: int,
+        n_samples_plotting: int) -> Plotter:
+
+    def default_plotter(
+            state: TrainingState,
+            train_data_: FullGraphSample,
+            key: chex.PRNGKey,
+    ) -> Sequence[plt.figure]:
+        features_flat = train_data_.features[0].flatten()
+
+        key, subkey = jax.random.split(key)
+        key_batch = jax.random.split(key, n_samples_plotting)
+        flow_samples_flat = jax.vmap(sample_cnf, in_axes=(None, None, 0, 0))(
+            cnf, state.params, key_batch, jnp.repeat(features_flat[None], n_samples_plotting, axis=0))
+        flow_samples = jnp.reshape(flow_samples_flat, (n_samples_plotting, n_nodes, dim))
+
+        # Plot samples.
+        bins_x, count_list = bin_samples_by_dist([train_data_.positions[:n_samples_plotting]], max_distance=10.)
+        plotting_n_nodes = train_data_.positions.shape[1]
+        pairwise_distances_flow = get_pairwise_distances_for_plotting(flow_samples, plotting_n_nodes, max_distance=10.)
+        counts_flow = get_counts(pairwise_distances_flow, bins_x)
+
+        fig1, ax = plt.subplots(1, figsize=(5, 5))
+        ax.stairs(count_list[0], bins_x, label="train samples", alpha=0.4, fill=True)
+        ax.stairs(counts_flow, bins_x, label="flow samples", alpha=0.4, fill=True)
+        ax.legend()
+
+        figs = [fig1, ]
+        return figs
+
+    return default_plotter
+
+
 def setup_training(
         cfg: DictConfig,
         load_dataset: Callable[[int, int], Tuple[FullGraphSample, FullGraphSample]],
-        target_log_prob_fn: Optional[Callable[[chex.Array], chex.Array]] = None
+        target_log_prob_fn: Optional[Callable[[chex.Array], chex.Array]] = None,
+        plotter: Optional[Plotter] = None
 ) -> TrainConfig:
-    lr = cfg.training.lr
+
     batch_size = cfg.training.batch_size
     n_samples_plotting = cfg.training.plot_batch_size
 
@@ -45,7 +86,21 @@ def setup_training(
 
 
     train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.train_set_size)
-    optimizer = optax.adamw(lr)
+
+    optimizer_config = cfg.training.optimizer
+    if optimizer_config.use_schedule:
+        n_batches_per_epoch = train_data_.positions.shape[0] // batch_size
+        n_iter_total = cfg.training.n_training_iter * n_batches_per_epoch
+        lr = optax.warmup_cosine_decay_schedule(
+                init_value=float(optimizer_config.init_lr),
+                peak_value=float(optimizer_config.peak_lr),
+                end_value=float(optimizer_config.end_lr),
+                warmup_steps=optimizer_config.n_iter_warmup,
+                decay_steps=n_iter_total
+                )
+    else:
+        lr = optimizer_config.init_lr
+    optimizer = optax.adam(lr)
 
     _, unravel_pytree = ravel_pytree(train_data_[0])
     ravel_pytree_batched = jax.vmap(lambda x: ravel_pytree(x)[0])
@@ -102,7 +157,9 @@ def setup_training(
             def forward(carry: None, xs: chex.PRNGKey):
                 key = xs
                 samples, log_q = sample_and_log_prob_cnf(cnf, state.params, key, features=train_features_flat[0],
-                                                            approx=cfg.training.eval_exact_log_prob)
+                                                        approx=cfg.training.eval_exact_log_prob,
+                                                        use_fixed_step_size=cfg.training.use_fixed_step_size
+                                                         )
                 samples = jnp.reshape(samples, (-1, n_nodes, dim))
                 log_p = target_log_prob_fn(samples)
                 log_w = log_p - log_q
@@ -126,11 +183,16 @@ def setup_training(
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
 
         if cfg.training.eval_exact_log_prob:
-            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0))(cnf, state.params, test_pos_flat, key_batch,
-                                                                                test_features_flat)
-        else:
             log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
-                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True)
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat,
+                cfg.training.use_fixed_step_size
+            )
+        else:
+            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
+
+        log_q = mask*log_q
+
         info = {}
         info.update(
             test_log_lik=jnp.mean(log_q)
@@ -143,6 +205,10 @@ def setup_training(
         else:
             log_w = None
         return log_w, info
+
+
+    if plotter is None:
+        plotter = setup_default_plotter(cnf=cnf, n_nodes=n_nodes, dim=dim, n_samples_plotting=n_samples_plotting)
 
 
     def eval_and_plot(
@@ -162,24 +228,8 @@ def setup_training(
             further_info = calculate_forward_ess(log_w_fwd, mask=flat_mask)
             info.update(further_info)
 
-        key, subkey = jax.random.split(key)
-        key_batch = jax.random.split(key, n_samples_plotting)
-        flow_samples_flat = jax.vmap(sample_cnf, in_axes=(None, None, 0, 0))(
-            cnf, state.params, key_batch, jnp.repeat(train_features_flat[0:1], n_samples_plotting, axis=0))
-        flow_samples = jnp.reshape(flow_samples_flat, (n_samples_plotting, n_nodes, dim))
+        figs = plotter(state, train_data_, key)
 
-        # Plot samples.
-        bins_x, count_list = bin_samples_by_dist([train_data_.positions[:n_samples_plotting]], max_distance=10.)
-        plotting_n_nodes = train_data_.positions.shape[1]
-        pairwise_distances_flow = get_pairwise_distances_for_plotting(flow_samples, plotting_n_nodes, max_distance=10.)
-        counts_flow = get_counts(pairwise_distances_flow, bins_x)
-
-        fig1, ax = plt.subplots(1, figsize=(5, 5))
-        ax.stairs(count_list[0], bins_x, label="train samples", alpha=0.4, fill=True)
-        ax.stairs(counts_flow, bins_x, label="flow samples", alpha=0.4, fill=True)
-        ax.legend()
-
-        figs = [fig1, ]
         for j, figure in enumerate(figs):
             if save:
                 figure.savefig(
