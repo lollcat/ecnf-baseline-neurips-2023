@@ -1,4 +1,4 @@
-from typing import Tuple, Callable, Optional
+from typing import Tuple, Callable, Optional, Sequence
 
 import os
 import pathlib
@@ -15,6 +15,7 @@ from jax.flatten_util import ravel_pytree
 from omegaconf import DictConfig
 
 from ecnf.targets.data import FullGraphSample
+from ecnf.cnf.core import FlowMatchingCNF
 from ecnf.cnf.build_cnf import build_cnf
 from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob, sample_and_log_prob_cnf
 from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
@@ -25,11 +26,52 @@ from ecnf.utils.plotting import bin_samples_by_dist, get_pairwise_distances_for_
 from ecnf.utils.evaluation import eval_fn, calculate_forward_ess
 
 
+Plotter = Callable[[TrainingState, FullGraphSample, chex.PRNGKey], Sequence[plt.figure]]
+
+
+def setup_default_plotter(
+        cnf: FlowMatchingCNF,
+        n_nodes: int,
+        dim: int,
+        n_samples_plotting: int) -> Plotter:
+
+    def default_plotter(
+            state: TrainingState,
+            train_data_: FullGraphSample,
+            key: chex.PRNGKey,
+    ) -> Sequence[plt.figure]:
+        features_flat = train_data_.features[0].flatten()
+
+        key, subkey = jax.random.split(key)
+        key_batch = jax.random.split(key, n_samples_plotting)
+        flow_samples_flat = jax.vmap(sample_cnf, in_axes=(None, None, 0, 0))(
+            cnf, state.params, key_batch, jnp.repeat(features_flat[None], n_samples_plotting, axis=0))
+        flow_samples = jnp.reshape(flow_samples_flat, (n_samples_plotting, n_nodes, dim))
+
+        # Plot samples.
+        bins_x, count_list = bin_samples_by_dist([train_data_.positions[:n_samples_plotting]], max_distance=10.)
+        plotting_n_nodes = train_data_.positions.shape[1]
+        pairwise_distances_flow = get_pairwise_distances_for_plotting(flow_samples, plotting_n_nodes, max_distance=10.)
+        counts_flow = get_counts(pairwise_distances_flow, bins_x)
+
+        fig1, ax = plt.subplots(1, figsize=(5, 5))
+        ax.stairs(count_list[0], bins_x, label="train samples", alpha=0.4, fill=True)
+        ax.stairs(counts_flow, bins_x, label="flow samples", alpha=0.4, fill=True)
+        ax.legend()
+
+        figs = [fig1, ]
+        return figs
+
+    return default_plotter
+
+
 def setup_training(
         cfg: DictConfig,
         load_dataset: Callable[[int, int], Tuple[FullGraphSample, FullGraphSample]],
-        target_log_prob_fn: Optional[Callable[[chex.Array], chex.Array]] = None
+        target_log_prob_fn: Optional[Callable[[chex.Array], chex.Array]] = None,
+        plotter: Optional[Plotter] = None
 ) -> TrainConfig:
+
     batch_size = cfg.training.batch_size
     n_samples_plotting = cfg.training.plot_batch_size
 
@@ -165,6 +207,10 @@ def setup_training(
         return log_w, info
 
 
+    if plotter is None:
+        plotter = setup_default_plotter(cnf=cnf, n_nodes=n_nodes, dim=dim, n_samples_plotting=n_samples_plotting)
+
+
     def eval_and_plot(
             state: TrainingState, key: chex.PRNGKey,
             iteration_n: int, save: bool, plots_dir: str) -> dict:
@@ -182,24 +228,8 @@ def setup_training(
             further_info = calculate_forward_ess(log_w_fwd, mask=flat_mask)
             info.update(further_info)
 
-        key, subkey = jax.random.split(key)
-        key_batch = jax.random.split(key, n_samples_plotting)
-        flow_samples_flat = jax.vmap(sample_cnf, in_axes=(None, None, 0, 0))(
-            cnf, state.params, key_batch, jnp.repeat(train_features_flat[0:1], n_samples_plotting, axis=0))
-        flow_samples = jnp.reshape(flow_samples_flat, (n_samples_plotting, n_nodes, dim))
+        figs = plotter(state, train_data_, key)
 
-        # Plot samples.
-        bins_x, count_list = bin_samples_by_dist([train_data_.positions[:n_samples_plotting]], max_distance=10.)
-        plotting_n_nodes = train_data_.positions.shape[1]
-        pairwise_distances_flow = get_pairwise_distances_for_plotting(flow_samples, plotting_n_nodes, max_distance=10.)
-        counts_flow = get_counts(pairwise_distances_flow, bins_x)
-
-        fig1, ax = plt.subplots(1, figsize=(5, 5))
-        ax.stairs(count_list[0], bins_x, label="train samples", alpha=0.4, fill=True)
-        ax.stairs(counts_flow, bins_x, label="flow samples", alpha=0.4, fill=True)
-        ax.legend()
-
-        figs = [fig1, ]
         for j, figure in enumerate(figs):
             if save:
                 figure.savefig(

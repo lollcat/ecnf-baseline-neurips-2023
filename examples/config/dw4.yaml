@@ -14,9 +14,13 @@ flow:
 
 
 training:
+  optimizer:
+    use_schedule: false
+    init_lr: 2e-4
+    peak_lr: null
+    end_lr: null
   batch_size: 64
   seed: 0
-  lr: 2e-4
   n_training_iter: 100
   plot_batch_size: 64
   eval_batch_size: 64
@@ -24,6 +28,7 @@ training:
   test_set_size: 1000
   eval_n_model_samples: 10_000
   eval_exact_log_prob: true
+  use_fixed_step_size: false
   final_run: false
   n_checkpoints: 0
   n_eval: 5
