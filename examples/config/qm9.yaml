@@ -4,11 +4,11 @@ hydra:
 
 flow:
   sigma_min: 0.000001
-  base_scale: 2.
+  base_scale: 1.
   network:
     type: egnn
-    mlp_units: [64, 64, 64]
-    n_blocks_egnn: 3
+    mlp_units: [256, 256, 256]
+    n_blocks_egnn: 4
     n_invariant_feat_hidden: 64
     time_embedding_dim: 32
 
@@ -20,7 +20,7 @@ training:
       peak_lr: 2e-4
       end_lr: 1e-5
       n_iter_warmup: 10
-  batch_size: 32
+  batch_size: 64
   seed: 0
   n_training_iter: 2000
   plot_batch_size: 64
@@ -43,7 +43,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_SMALL_VANILLA_MLP
+    name: qm9_fm_base_scale_1
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
