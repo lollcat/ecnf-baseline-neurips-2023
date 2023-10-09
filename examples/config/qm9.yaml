@@ -43,7 +43,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_base_scale_2
+    name: qm9_fm_VectorNormMLP
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
