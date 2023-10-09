@@ -188,7 +188,9 @@ class EGNN(nn.Module):
 
         # vectors = vectors * self.param("final_scaling", nn.initializers.ones_init(), ())
         vector_norms = safe_norm(vectors, axis=-1, keepdims=True)
-        new_vector_norms = MLP((*self.mlp_units, 1))(jnp.concatenate([h, vector_norms], axis=-1))
+        new_vector_norms = MLP(self.mlp_units, activate_final=True)(jnp.concatenate([h, vector_norms], axis=-1))
+        new_vector_norms = nn.Dense(
+            1, kernel_init=nn.initializers.variance_scaling(0.001, "fan_avg", "uniform"))(new_vector_norms)
         vectors = vectors * new_vector_norms / vector_norms
 
         return vectors
