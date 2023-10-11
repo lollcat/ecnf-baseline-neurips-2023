@@ -7,7 +7,7 @@ flow:
   base_scale: 2.
   network:
     type: egnn
-    mlp_units: [256, 256]
+    mlp_units: [256, 256, 256]
     n_blocks_egnn: 5
     n_invariant_feat_hidden: 32
     time_embedding_dim: 8
@@ -16,8 +16,8 @@ flow:
 training:
   optimizer:
       use_schedule: true
-      init_lr: 2e-4
-      peak_lr: 2e-4
+      init_lr: 1e-4
+      peak_lr: 1e-4
       end_lr: 0.
       n_iter_warmup: 10
   batch_size: 128
@@ -43,7 +43,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_5blocks_LONG
+    name: qm9_fm_5blocks_LONG_lowerlr
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
