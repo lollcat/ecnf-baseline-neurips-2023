@@ -2,6 +2,7 @@ from typing import NamedTuple, Optional
 
 import chex
 import jax
+import jax.numpy as jnp
 import optax
 from functools import partial
 
@@ -13,6 +14,7 @@ class TrainingState(NamedTuple):
     params: chex.ArrayTree
     opt_state: optax.OptState
     key: chex.PRNGKey
+    ema_params: Optional[chex.ArrayTree] = None
 
 
 @partial(jax.jit, static_argnums=(0, 1))
@@ -21,7 +23,9 @@ def flow_matching_update_fn(
         opt_update: optax.TransformUpdateFn,
         state: TrainingState,
         x_data: chex.Array,
-        features: Optional[chex.Array] = None):
+        features: Optional[chex.Array] = None,
+        ema_beta: float = 0.999
+):
 
     key, subkey = jax.random.split(state.key)
     grads, info = jax.grad(flow_matching_loss_fn, has_aux=True, argnums=1)(
@@ -39,4 +43,11 @@ def flow_matching_update_fn(
         update_norm=optax.global_norm(updates),
     )
 
-    return TrainingState(params=new_params, opt_state=new_opt_state, key=key), info
+    if not isinstance(state.ema_params, jnp.ndarray):
+        ema_fn = lambda theta_bar, theta_t: theta_bar * ema_beta + (1 - ema_beta)*theta_t
+        ema_params = jax.tree_map(ema_fn, state.ema_params, new_params)
+    else:
+        ema_params = state.ema_params
+
+    return TrainingState(params=new_params, opt_state=new_opt_state, key=key,
+                         ema_params=ema_params), info

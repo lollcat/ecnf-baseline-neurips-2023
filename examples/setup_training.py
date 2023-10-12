@@ -125,7 +125,10 @@ def setup_training(
     def init_state(key: chex.PRNGKey) -> TrainingState:
         params = cnf.init(key, train_pos_flat[:2], jnp.zeros(2), train_features_flat[:2])
         opt_state = optimizer.init(params=params)
-        state = TrainingState(params=params, opt_state=opt_state, key=key)
+
+        ema_params = params if cfg.training.use_ema else jnp.array(None)
+        state = TrainingState(params=params, opt_state=opt_state, key=key,
+                              ema_params=ema_params)
         return state
 
     ds_size = train_pos_flat.shape[0]
@@ -227,6 +230,24 @@ def setup_training(
         if target_log_prob_fn is not None:
             further_info = calculate_forward_ess(log_w_fwd, mask=flat_mask)
             info.update(further_info)
+
+        eval_ema = True
+        if eval_ema and cfg.training.use_ema:
+            state_with_ema_params = state._replace(params=state.ema_params)
+            info_ema, log_w_fwd, flat_mask = eval_fn(
+                x=(test_pos_flat, test_features_flat),
+                key=key,
+                eval_on_test_batch_fn=partial(eval_on_data_batch_fn, state=state_with_ema_params),
+                eval_batch_free_fn=partial(eval_batch_free_fn, state=state_with_ema_params) if eval_batch_free_fn is not None else None,
+                batch_size=cfg.training.eval_batch_size,
+            )
+            info_ema = {key + "_ema": val for key, val in info_ema.items()}
+            info.update(info_ema)
+
+            if target_log_prob_fn is not None:
+                further_info_ema = calculate_forward_ess(log_w_fwd, mask=flat_mask)
+                further_info_ema = {key + "_ema": val for key, val in further_info_ema.items()}
+                info.update(further_info_ema)
 
         figs = plotter(state, train_data_, key)
 
