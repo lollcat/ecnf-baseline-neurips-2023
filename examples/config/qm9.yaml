@@ -7,7 +7,7 @@ flow:
   base_scale: 2.
   network:
     type: egnn
-    mlp_units: [128, 128, 128]
+    mlp_units: [64, 64, 64]
     n_blocks_egnn: 5
     n_invariant_feat_hidden: 32
     time_embedding_dim: 8
@@ -25,7 +25,7 @@ training:
   seed: 0
   n_training_iter: 16000
   plot_batch_size: 64
-  eval_batch_size: 64
+  eval_batch_size: ${training.batch_size}
   train_set_size: null
   test_set_size: null
   eval_n_model_samples: null # Unused as there is no energy function.
@@ -44,7 +44,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_net128_128_128_256bs_16000epoch
+    name: qm9_fm_net64_64_64_256bs_16000epoch
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
