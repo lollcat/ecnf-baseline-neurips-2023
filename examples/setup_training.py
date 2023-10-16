@@ -125,7 +125,10 @@ def setup_training(
     def init_state(key: chex.PRNGKey) -> TrainingState:
         params = cnf.init(key, train_pos_flat[:2], jnp.zeros(2), train_features_flat[:2])
         opt_state = optimizer.init(params=params)
-        state = TrainingState(params=params, opt_state=opt_state, key=key)
+
+        ema_params = params if cfg.training.use_ema else jnp.array(None)
+        state = TrainingState(params=params, opt_state=opt_state, key=key,
+                              ema_params=ema_params)
         return state
 
     ds_size = train_pos_flat.shape[0]
@@ -215,6 +218,8 @@ def setup_training(
             state: TrainingState, key: chex.PRNGKey,
             iteration_n: int, save: bool, plots_dir: str) -> dict:
 
+        if cfg.training.use_ema and (cfg.training.n_training_iter - 1) == iteration_n:
+            state = state._replace(params=state.ema_params)
 
         info, log_w_fwd, flat_mask = eval_fn(
             x=(test_pos_flat, test_features_flat),
@@ -227,6 +232,7 @@ def setup_training(
         if target_log_prob_fn is not None:
             further_info = calculate_forward_ess(log_w_fwd, mask=flat_mask)
             info.update(further_info)
+
 
         figs = plotter(state, train_data_, key)
 
