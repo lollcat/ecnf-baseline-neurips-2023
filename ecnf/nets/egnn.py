@@ -121,7 +121,7 @@ class EGNN(nn.Module):
     n_invariant_feat_hidden: int
     name: Optional[str] = None
     activation_fn: Callable = jax.nn.silu
-    stable_mlp: bool = False
+    stable_mlp: bool = True
     residual_h: bool = True
     residual_x: bool = True
     normalization_constant: float = 1.0
