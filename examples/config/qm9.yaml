@@ -44,7 +44,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: qm9_fm_net_edit_egnn_lengths_not_sq_stable_mlp
+    name: qm9_fm_net_4_256_256_256_256
     project: fab
     entity: flow-ais-bootstrap
     tags: [qm9,flow_matching]
