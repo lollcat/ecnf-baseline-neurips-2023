@@ -186,6 +186,6 @@ class EGNN(nn.Module):
 
         vectors = vectors - positions.mean(axis=0, keepdims=True)  # Zero-CoM.
 
-        vectors = vectors * self.param("final_scaling", nn.initializers.ones_init(), ())
+        vectors = vectors * nn.Dense(1, kernel_init=nn.initializers.zeros_init())(h)
 
         return vectors
