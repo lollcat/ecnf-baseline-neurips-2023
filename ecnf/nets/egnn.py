@@ -73,7 +73,7 @@ class EGCL(nn.Module):
         vectors = node_positions[receivers] - node_positions[senders]
         lengths = safe_norm(vectors, axis=-1, keepdims=True)
 
-        edge_feat_in = jnp.concatenate([node_features[senders], node_features[receivers], lengths**2], axis=-1)
+        edge_feat_in = jnp.concatenate([node_features[senders], node_features[receivers], lengths], axis=-1)
 
         # build messages
         m_ij = self.phi_e(edge_feat_in)
@@ -185,6 +185,6 @@ class EGNN(nn.Module):
 
         vectors = vectors - positions.mean(axis=0, keepdims=True)  # Zero-CoM.
 
-        vectors = vectors * nn.Dense(1, kernel_init=nn.initializers.zeros_init())(h)
+        vectors = vectors * self.param("final_scaling", nn.initializers.ones_init(), ())
 
         return vectors
