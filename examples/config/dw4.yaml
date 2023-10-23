@@ -28,10 +28,10 @@ training:
   eval_batch_size: 64
   train_set_size: 1000
   test_set_size: 1000
-  eval_n_model_samples: 256 # TODO: incrase to 10_000
+  eval_n_model_samples: 10_000
   eval_exact_log_prob: true
   use_fixed_step_size: false
-  final_run: false
+  final_run: true
   n_checkpoints: 0
   n_eval: 5
   save: true
