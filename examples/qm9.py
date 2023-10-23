@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 
 from ecnf.utils.loop import run_training
 from ecnf.targets.data import load_qm9, FullGraphSample
-from examples.setup_training import setup_training
+from ecnf.setup_training import setup_training
 
 
 def load_dataset(train_set_size, valid_set_size, final_run: bool) -> Tuple[FullGraphSample, FullGraphSample]:

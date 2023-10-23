@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 from ecnf.utils.loop import run_training
 from ecnf.targets.data import load_dw4, FullGraphSample
 from ecnf.targets.target_energy.double_well import log_prob_fn
-from examples.setup_training import setup_training
+from ecnf.setup_training import setup_training
 
 
 
