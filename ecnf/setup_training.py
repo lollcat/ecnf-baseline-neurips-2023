@@ -155,7 +155,7 @@ def setup_training(
         return state, info
 
 
-    if target_log_prob_fn:
+    if target_log_prob_fn and cfg.training.eval_n_model_samples is not None:
         def eval_batch_free_fn(key: chex.PRNGKey, state: TrainingState) -> dict:
             def forward(carry: None, xs: chex.PRNGKey):
                 key = xs
