@@ -85,7 +85,7 @@ def setup_training(
     pathlib.Path(save_path).mkdir(exist_ok=True, parents=True)
 
 
-    train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.train_set_size)
+    train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.test_set_size)
 
     optimizer_config = cfg.training.optimizer
     if optimizer_config.use_schedule:
