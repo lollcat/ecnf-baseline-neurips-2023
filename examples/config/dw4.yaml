@@ -27,8 +27,8 @@ training:
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: 1000
-  test_set_size: 1000
-  eval_n_model_samples: 10_000
+  test_set_size: 10000
+  eval_n_model_samples: null
   eval_exact_log_prob: true
   use_fixed_step_size: false
   final_run: true
@@ -44,7 +44,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: dw4_fm
+    name: dw4_fm_big_test
     project: fab
     entity: flow-ais-bootstrap
     tags: [dw4,flow_matching,final1]

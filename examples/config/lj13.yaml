@@ -24,6 +24,7 @@ training:
   batch_size: 64
   seed: 0
   n_training_iter: 400
+
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: 1000
