@@ -18,7 +18,7 @@ from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
 from ecnf.utils.loop import TrainConfig, run_training
 from ecnf.utils.loggers import ListLogger
 
-def setup_target_data(n_train: int = 128, n_test: int = 64):
+def setup_target_data(n_train: int = int(1e4), n_test: int = 256):
     key = jax.random.PRNGKey(0)
 
     n_mixes = 8
@@ -88,7 +88,7 @@ def setup_training():
     lr = 1e-4
     dim = 2
     batch_size = 64
-    n_iteration = int(1e4)
+    n_iteration = int(1e2)
     logger = ListLogger()
     seed = 0
     n_eval = 5
@@ -97,7 +97,7 @@ def setup_training():
     train_data, test_data, target_distribution = setup_target_data()
     optimizer = optax.adamw(lr)
 
-    sigma_min = 1e-3
+    sigma_min = 1e-4
     base_scale = 5.
     base = distrax.MultivariateNormalDiag(loc=jnp.zeros(dim), scale_diag=jnp.ones(dim)*base_scale)
 

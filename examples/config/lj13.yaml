@@ -7,7 +7,7 @@ flow:
   base_scale: 1.
   network:
     type: egnn
-    mlp_units: [128, 128, 128] # [256, 256, 256, 256]
+    mlp_units: [128, 128, 128]
     n_blocks_egnn: 3
     n_invariant_feat_hidden: 64
     time_embedding_dim: 8
@@ -24,15 +24,16 @@ training:
   batch_size: 64
   seed: 0
   n_training_iter: 400
+
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: 1000
   test_set_size: 1000
-  eval_n_model_samples: 256 # TODO: incrase to 10_000
+  eval_n_model_samples: 10_000
   eval_exact_log_prob: true
   use_fixed_step_size: false
-  final_run: false
-  n_checkpoints: 0
+  final_run: true
+  n_checkpoints: 5
   n_eval: 5
   save: true
   save_dir: ''
@@ -44,7 +45,7 @@ logger:
 #  pandas_logger:
 #    save_period: 1000 # how often to save the pandas dataframe as a csv
   wandb:
-    name: lj13_fm_non_exact_density
+    name: lj13_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [lj13,flow_matching]
+    tags: [lj13,flow_matching,final1]
