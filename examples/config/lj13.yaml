@@ -7,7 +7,7 @@ flow:
   base_scale: 1.
   network:
     type: egnn
-    mlp_units: [128, 128, 128] # [256, 256, 256, 256]
+    mlp_units: [128, 128, 128]
     n_blocks_egnn: 3
     n_invariant_feat_hidden: 64
     time_embedding_dim: 8
@@ -33,7 +33,7 @@ training:
   eval_exact_log_prob: true
   use_fixed_step_size: false
   final_run: true
-  n_checkpoints: 0
+  n_checkpoints: 5
   n_eval: 5
   save: true
   save_dir: ''
