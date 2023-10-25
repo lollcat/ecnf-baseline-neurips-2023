@@ -186,19 +186,21 @@ def setup_training(
         key_batch = jax.random.split(key1, test_pos_flat.shape[0])
 
         if cfg.training.eval_exact_log_prob:
-            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
+            log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
                 cnf, state.params, test_pos_flat, key_batch, test_features_flat,
                 cfg.training.use_fixed_step_size
             )
         else:
-            log_q = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
+            log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
                 cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
 
         log_q = mask*log_q
 
         info = {}
         info.update(
-            test_log_lik=jnp.mean(log_q)
+            test_log_lik=jnp.mean(log_q),
+            test_log_prob_base=jnp.mean(log_prob_base),
+            test_delta_log_lik=jnp.mean(delta_log_lik),
         )
 
         if target_log_prob_fn is not None:

@@ -49,7 +49,7 @@ def get_log_prob(
         rtol: float = 1e-5,
         atol: float = 1e-5,
         step_size: float = 0.05,
-) -> chex.Array:
+) -> Tuple[chex.Array, chex.Array, chex.Array]:
     features = features[None] if features is not None else None
 
     eps = jax.random.normal(key, x.shape)
@@ -89,9 +89,9 @@ def get_log_prob(
                                dt0=None)
     x0 = jnp.squeeze(solution.ys[0], axis=0)
     delta_log_likelihood = jnp.squeeze(solution.ys[1], axis=0)
-    log_p = cnf.log_prob_base(x0) + delta_log_likelihood
-    return log_p
-
+    log_prob_base = cnf.log_prob_base(x0)
+    log_p = log_prob_base + delta_log_likelihood
+    return log_p, log_prob_base, delta_log_likelihood
 
 
 def sample_and_log_prob_cnf(

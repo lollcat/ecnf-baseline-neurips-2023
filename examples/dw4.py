@@ -21,7 +21,7 @@ def load_dataset(train_set_size: int, valid_set_size: Optional[int], final_run: 
 
 @hydra.main(config_path="./config", config_name="dw4.yaml")
 def run(cfg: DictConfig):
-    local = False
+    local = True
     if local:
         cfg.logger = DictConfig({"list_logger": None})
         cfg.training.save = False
