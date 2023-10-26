@@ -1,5 +1,5 @@
 """Build's CNF for application to Cartesian coordinates of molecules."""
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Tuple
 
 from functools import partial
 
@@ -42,12 +42,23 @@ def build_cnf(
         time_embedding_dim: int,
 ):
 
-    base = distrax.Transformed(distribution=FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames),
-                               bijector=distrax.Block(
-                                   distrax.ScalarAffine(
-                                   shift=jnp.zeros(dim*n_frames), scale=jnp.ones(dim*n_frames)*base_scale),
-                                   ndims=1
-                               ))
+    scale_bijector = distrax.ScalarAffine(
+        shift=jnp.zeros(dim*n_frames),
+        scale=jnp.ones(dim*n_frames)*base_scale)
+
+    scale_bijector_zero_com = distrax.Lambda(
+        forward=scale_bijector.forward,
+        inverse=scale_bijector.inverse,
+        forward_log_det_jacobian=lambda x: jnp.sum(scale_bijector.forward_log_det_jacobian(x), axis=-1) * (n_frames - 1) / n_frames,
+        inverse_log_det_jacobian=lambda y: jnp.sum(scale_bijector.inverse_log_det_jacobian(y), axis=-1) * (n_frames - 1) / n_frames,
+        event_ndims_in=1,
+        event_ndims_out=1
+    )
+
+    base = distrax.Transformed(
+        distribution=FlatZeroCoMGaussian(dim=dim, n_nodes=n_frames),
+        bijector=scale_bijector_zero_com)
+
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
 
     class FlatEgnn(nn.Module):
