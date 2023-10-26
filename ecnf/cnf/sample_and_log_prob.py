@@ -5,15 +5,20 @@ import jax.numpy as jnp
 import jax
 from diffrax import diffeqsolve, ODETerm, Dopri5, PIDController
 
-from ecnf.cnf.core import FlowMatchingCNF
+from ecnf.cnf.core import CNF
 
 
-def sample_cnf(cnf: FlowMatchingCNF, params: chex.ArrayTree,
+_DEFAULT_T_FINAL = 1.
+
+
+def sample_cnf(cnf: CNF,
+               params: chex.ArrayTree,
                key: chex.PRNGKey, features: Optional[chex.Array] = None,
                use_fixed_step_size: bool = False,
                rtol: float = 1e-5,
                atol: float = 1e-5,
                step_size: float = 0.05,
+               t_final: float = 1.,
                ) -> chex.Array:
 
     def f(t: chex.Array, y: chex.Array, args: None) -> chex.Array:
@@ -30,16 +35,16 @@ def sample_cnf(cnf: FlowMatchingCNF, params: chex.ArrayTree,
     x0 = jnp.squeeze(cnf.sample_base(key, 1), axis=0)
 
     if use_fixed_step_size:
-        solution = diffeqsolve(term, solver, t0=0, t1=1, dt0=step_size, y0=x0)
+        solution = diffeqsolve(term, solver, t0=0, t1=t_final, dt0=step_size, y0=x0)
     else:
-        solution = diffeqsolve(term, solver, t0=0, t1=1, y0=x0,
+        solution = diffeqsolve(term, solver, t0=0, t1=t_final, y0=x0,
                            stepsize_controller=PIDController(rtol=rtol, atol=atol, dtmin=1e-5),
                                dt0=None)
     return jnp.squeeze(solution.ys, axis=0)
 
 
 def get_log_prob(
-        cnf: FlowMatchingCNF,
+        cnf: CNF,
         params: chex.ArrayTree,
         x: chex.Array,
         key: chex.PRNGKey,
@@ -49,6 +54,7 @@ def get_log_prob(
         rtol: float = 1e-5,
         atol: float = 1e-5,
         step_size: float = 0.05,
+        t_final: float = _DEFAULT_T_FINAL,
 ) -> Tuple[chex.Array, chex.Array, chex.Array]:
     features = features[None] if features is not None else None
 
@@ -82,9 +88,9 @@ def get_log_prob(
     solver = Dopri5()
 
     if use_fixed_step_size:
-        solution = diffeqsolve(term, solver, t0=1., t1=0., dt0=-step_size, y0=(x, jnp.zeros(())))
+        solution = diffeqsolve(term, solver, t0=t_final, t1=0., dt0=-step_size, y0=(x, jnp.zeros(())))
     else:
-        solution = diffeqsolve(term, solver, t0=1., t1=0., y0=(x, jnp.zeros(())),
+        solution = diffeqsolve(term, solver, t0=t_final, t1=0., y0=(x, jnp.zeros(())),
                                stepsize_controller=PIDController(rtol=rtol, atol=atol, dtmin=1e-5),
                                dt0=None)
     x0 = jnp.squeeze(solution.ys[0], axis=0)
@@ -95,7 +101,7 @@ def get_log_prob(
 
 
 def sample_and_log_prob_cnf(
-        cnf: FlowMatchingCNF,
+        cnf: CNF,
         params: chex.ArrayTree,
         key: chex.PRNGKey,
         features: Optional[chex.Array] = None,
@@ -104,6 +110,7 @@ def sample_and_log_prob_cnf(
         rtol: float = 1e-5,
         atol: float = 1e-5,
         step_size: float = 0.05,
+        t_final: float = _DEFAULT_T_FINAL,
 ) -> Tuple[chex.Array, chex.Array]:
 
     features = features[None] if features is not None else None
@@ -137,9 +144,9 @@ def sample_and_log_prob_cnf(
     x0, log_prob_base = cnf.sample_and_log_prob_base(seed=key, sample_shape=())
 
     if use_fixed_step_size:
-        solution = diffeqsolve(term, solver, t0=0, t1=1, dt0=step_size, y0=x0)
+        solution = diffeqsolve(term, solver, t0=0, t1=t_final, dt0=step_size, y0=x0)
     else:
-        solution = diffeqsolve(term, solver, t0=0., t1=1., y0=(x0, jnp.zeros(())),
+        solution = diffeqsolve(term, solver, t0=0., t1=t_final, y0=(x0, jnp.zeros(())),
                                stepsize_controller=PIDController(rtol=rtol, atol=atol, dtmin=1e-5),
                                dt0=None)
     x1 = jnp.squeeze(solution.ys[0], axis=0)

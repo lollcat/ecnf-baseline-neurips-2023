@@ -48,6 +48,9 @@ def build_cnf(
                                    shift=jnp.zeros(dim*n_frames), scale=jnp.ones(dim*n_frames)*base_scale),
                                    ndims=1
                                ))
+    if base_scale != 1.:
+        raise NotImplementedError  # Current base log det will be incorrect.
+
     get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
 
     class FlatEgnn(nn.Module):

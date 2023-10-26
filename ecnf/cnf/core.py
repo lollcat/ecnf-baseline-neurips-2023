@@ -39,11 +39,24 @@ def optimal_transport_conditional_vf(x0: chex.Array, x1: chex.Array, t: chex.Arr
     return x_t, u_t
 
 
+SampleAndLogProbBase = Callable[[chex.PRNGKey, Optional[chex.Shape]], Tuple[chex.Array, chex.Array]]
+SampleBase = Callable[[chex.PRNGKey, int], chex.Array]
+LogProbBase = Callable[[chex.Array], chex.Array]
+
+
+class CNF(Protocol):
+    """Basic CNF (flexible to work with diffusion model)."""
+    apply: VectorFieldApply
+    sample_base: SampleBase
+    log_prob_base: LogProbBase
+    sample_and_log_prob_base: SampleAndLogProbBase
+
+
 class FlowMatchingCNF(NamedTuple):
     """Define all the callables needed for a flow matching CNF."""
     init: Callable[[chex.PRNGKey, chex.Array, Optional[chex.Array]], chex.ArrayTree]
-    apply: VectorFieldApply
-    sample_base: Callable[[chex.PRNGKey, int], chex.Array]
     get_x_t_and_conditional_u_t: GetConditionalVectorField
-    log_prob_base: Callable[[chex.Array], chex.Array]
-    sample_and_log_prob_base: Callable[[chex.PRNGKey, Optional[chex.Shape]], Tuple[chex.Array, chex.Array]]
+    apply: VectorFieldApply
+    sample_base: SampleBase
+    log_prob_base: LogProbBase
+    sample_and_log_prob_base: SampleAndLogProbBase

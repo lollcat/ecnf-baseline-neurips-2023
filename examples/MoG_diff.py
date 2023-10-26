@@ -12,9 +12,9 @@ import chex
 import matplotlib.pyplot as plt
 from flax import linen as nn
 
-from ecnf.cnf.core import FlowMatchingCNF, optimal_transport_conditional_vf
+from ecnf.diffusion.core import DiffusionModel, marginal_prob_std
 from ecnf.cnf.sample_and_log_prob import sample_cnf, get_log_prob
-from ecnf.cnf.gradient_step import TrainingState, flow_matching_update_fn
+from ecnf.diffusion.gradient_step import TrainingState, score_matching_update_fn
 from ecnf.utils.loop import TrainConfig, run_training
 from ecnf.utils.loggers import ListLogger
 
@@ -63,6 +63,7 @@ def get_timestep_embedding(timesteps: chex.Array, embedding_dim: int):
 
 
 class VectorNet(nn.Module):
+    sigma: float
     features: Sequence[int] = (512, 512, 512)
     embedding_dim: int = 32
 
@@ -78,8 +79,11 @@ class VectorNet(nn.Module):
          for feature in self.features:
             nn_in = jnp.concatenate([x, t_embed], axis=-1)
             x = nn.Dense(feature)(nn_in)
-            x = nn.activation.gelu(x)
-         out = nn.Dense(event_dim)(x)
+            x = nn.activation.swish(x)
+         out = nn.Dense(event_dim, kernel_init=nn.initializers.zeros_init())(x)
+
+         sigma_t = marginal_prob_std(t, self.sigma)
+         out = out / sigma_t[:, None]
          return out
 
 
@@ -87,7 +91,7 @@ class VectorNet(nn.Module):
 def setup_training():
     lr = 1e-4
     dim = 2
-    batch_size = 64
+    batch_size = 256
     n_iteration = int(1e2)
     logger = ListLogger()
     seed = 0
@@ -97,20 +101,15 @@ def setup_training():
     train_data, test_data, target_distribution = setup_target_data()
     optimizer = optax.adamw(lr)
 
-    sigma_min = 1e-4
-    base_scale = 5.
-    base = distrax.MultivariateNormalDiag(loc=jnp.zeros(dim), scale_diag=jnp.ones(dim)*base_scale)
+    sigma = 30.
+    net = VectorNet(sigma=sigma)
 
-    get_cond_vector_field = partial(optimal_transport_conditional_vf, sigma_min=sigma_min)
-    net = VectorNet()
-
-    cnf = FlowMatchingCNF(init=net.init, apply=net.apply, get_x_t_and_conditional_u_t=get_cond_vector_field,
-                          sample_base=base._sample_n, sample_and_log_prob_base=base.sample_and_log_prob,
-                          log_prob_base=base.log_prob)
-
+    diffusion_model = DiffusionModel(init=net.init, apply=net.apply, sigma=sigma, zero_mean=False,
+                                     dim=train_data.shape[-1])
+    cnf = diffusion_model.to_cnf()
 
     def init_state(key: chex.PRNGKey) -> TrainingState:
-        params = cnf.init(key, train_data[:2], jnp.zeros(2,))
+        params = diffusion_model.init(key, train_data[:2], jnp.zeros(2,))
         opt_state = optimizer.init(params=params)
         state = TrainingState(params=params, opt_state=opt_state, key=key)
         return state
@@ -125,8 +124,8 @@ def setup_training():
 
         for j in range(ds_size // batch_size):
             batch = train_data[ds_indices[j*batch_size:(j+1)*batch_size]]
-            state, info = flow_matching_update_fn(
-                cnf=cnf,
+            state, info = score_matching_update_fn(
+                diffusion_model=diffusion_model,
                 opt_update=optimizer.update,
                 state=state,
                 x_data=batch,
@@ -142,8 +141,9 @@ def setup_training():
         key1, key2 = jax.random.split(key)
         key_batch = jax.random.split(key1, test_data.shape[0])
         features = None
-        log_prob = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, None))(cnf, state.params, test_data, key_batch,
-                                                                            features)
+
+        log_prob, log_prob_base, delta_log_likelihood = jax.vmap(get_log_prob_diff, in_axes=(None, None, 0, 0, None))(
+            cnf, state.params, test_data, key_batch, features)
         target_log_prob = target_distribution.log_prob(test_data)
         chex.assert_equal_shape((log_prob, target_log_prob))
         info = {}
@@ -152,7 +152,7 @@ def setup_training():
             test_kl=jnp.mean(target_log_prob - log_prob))
 
 
-        log_prob_approx = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, None, None))(
+        log_prob_approx, log_prob_base, delta_log_likelihood = jax.vmap(get_log_prob_diff, in_axes=(None, None, 0, 0, None, None))(
             cnf, state.params, test_data, key_batch, features, True)
         chex.assert_equal_shape((log_prob_approx, target_log_prob))
         info.update(test_approx_log_lik=jnp.mean(log_prob_approx))
@@ -164,7 +164,7 @@ def setup_training():
         # Plot samples.
         n_samples_plotting = 512
         key_batch = jax.random.split(key, n_samples_plotting)
-        flow_samples = jax.vmap(sample_cnf, in_axes=(None, None, 0, None))(
+        flow_samples = jax.vmap(sample_diff, in_axes=(None, None, 0, None))(
             cnf, state.params, key_batch, features)
         fig1, axs = plt.subplots(1)
         axs.plot(flow_samples[:, 0], flow_samples[:, 1], "o", label="flow samples", alpha=0.4)
@@ -216,10 +216,6 @@ def setup_training():
     )
 
     return train_config
-
-
-
-
 
 
 if __name__ == '__main__':
