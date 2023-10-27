@@ -60,9 +60,13 @@ def download_checkpoint(tags, seed, max_iter, base_path):
     return params
 
 
-def download_wandb_checkpoint():
+def download_wandb_checkpoint(auto_download: bool = False, file_path: str = './seed0.pkl'):
     # Returns params from checkpoint at the end of training.
-    params = download_checkpoint(tags=["qm9", "flow_matching"], seed=0, max_iter=16000, base_path=".")
+    if auto_download:
+        params = download_checkpoint(tags=["qm9", "flow_matching"], seed=0, max_iter=16000, base_path=".")
+    else:
+        state = pickle.load(open(file_path, "rb"))
+        params = state.params
     return params
 
 
