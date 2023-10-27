@@ -40,6 +40,7 @@ def build_cnf(
         mlp_units: Sequence[int],
         n_invariant_feat_hidden: int,
         time_embedding_dim: int,
+        n_features: int,
 ):
 
     scale_bijector = distrax.ScalarAffine(
@@ -75,6 +76,10 @@ def build_cnf(
 
             positions = jnp.reshape(positions, (positions.shape[0], n_frames, dim))
             node_features = jnp.reshape(node_features, (node_features.shape[0], n_frames, -1))
+            node_features = nn.Embed(num_embeddings=n_features, features=n_invariant_feat_hidden)(
+                jnp.squeeze(node_features, axis=-1))
+
+
             time_embedding = get_timestep_embedding(time, time_embedding_dim)
 
             net = EGNN(
