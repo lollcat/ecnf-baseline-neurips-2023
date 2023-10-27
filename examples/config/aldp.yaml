@@ -1,0 +1,55 @@
+hydra:
+  job:
+    chdir: false
+
+target:
+  train_path: 'ecnf/targets/data/aldp_500K_train_mini.h5'
+  test_path: 'ecnf/targets/data/aldp_500K_train_mini.h5'
+  valid_path: 'ecnf/targets/data/aldp_500K_train_mini.h5'
+
+flow:
+  sigma_min: 0.000001
+  base_scale: 0.2
+  network:
+    type: egnn
+    mlp_units: [256, 256, 256, 256]
+    n_blocks_egnn: 5
+    n_invariant_feat_hidden: 32
+    time_embedding_dim: 8
+
+
+training:
+  use_ema: true
+  optimizer:
+      use_schedule: true
+      init_lr: 1e-4
+      peak_lr: 1e-4
+      end_lr: 0.
+      n_iter_warmup: 10
+  batch_size: 256
+  seed: 0
+  n_training_iter: 10
+  plot_batch_size: 64
+  eval_batch_size: ${training.batch_size}
+  train_set_size: null
+  test_set_size: null
+  eval_n_model_samples: null # Unused as there is no energy function.
+  eval_exact_log_prob: false
+  use_fixed_step_size: false
+  final_run: true
+  n_checkpoints: 5
+  n_eval: 10
+  save: true
+  save_dir: ''
+  save_in_wandb_dir: true
+
+
+logger:
+#  list_logger: null
+#  pandas_logger:
+#    save_period: 1000 # how often to save the pandas dataframe as a csv
+  wandb:
+    name: aldp_fm
+    project: fab
+    entity: flow-ais-bootstrap
+    tags: [qm9,flow_matching]
