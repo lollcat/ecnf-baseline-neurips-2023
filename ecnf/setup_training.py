@@ -111,6 +111,7 @@ def setup_training(
 
     n_nodes, dim = train_data_.positions.shape[1:]
 
+
     cnf = build_cnf(dim=dim,
                     n_frames=n_nodes,
                     sigma_min=cfg.flow.sigma_min,
@@ -118,7 +119,8 @@ def setup_training(
                     n_blocks_egnn=cfg.flow.network.n_blocks_egnn,
                     mlp_units=cfg.flow.network.mlp_units,
                     n_invariant_feat_hidden=cfg.flow.network.n_invariant_feat_hidden,
-                    time_embedding_dim=cfg.flow.network.time_embedding_dim
+                    time_embedding_dim=cfg.flow.network.time_embedding_dim,
+                    n_features=train_features_flat.max() + 1,
                     )
 
 
