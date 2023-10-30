@@ -104,15 +104,16 @@ class PandasLogger(Logger):
         self.save = save
         self.save_period = save_period
         self.dataframe = pd.DataFrame()
+        self.buffer_data = []
+        self.buffer_iter = []
         self.iter: int = 0
         if os.path.exists(self.save_path):
             self.dataframe = pd.read_csv(self.save_path, index_col=0)
             self.iter = int(self.dataframe.keys()[-1]) + 1
 
     def write(self, data: Dict[str, Any]) -> None:
-        self.dataframe = self.dataframe.join(
-            pd.Series(data, name=self.iter), how="outer"
-        )
+        self.buffer_data.append(data)
+        self.buffer_iter.append(self.iter)
         self.iter += 1
         if self.save and (self.iter + 1) % self.save_period == 0:
             if self.iter + 1 == self.save_period:  # First save
@@ -120,12 +121,22 @@ class PandasLogger(Logger):
                     pathlib.Path(self.save_path).parent.mkdir(
                         exist_ok=True, parents=True
                     )
+            if len(self.buffer_data) > 0:
+                df_data = pd.DataFrame(self.buffer_data, index=self.buffer_iter).transpose()
+                self.dataframe = self.dataframe.join(df_data, how='outer')
+                self.buffer_data = []
+                self.buffer_iter = []
             self.dataframe.to_csv(
                 open(self.save_path, "w")
             )  # overwrite with latest version
 
     def close(self) -> None:
         if self.save:
+            if len(self.buffer_data) > 0:
+                df_data = pd.DataFrame(self.buffer_data, index=self.buffer_iter).transpose()
+                self.dataframe = self.dataframe.join(df_data, how='outer')
+                self.buffer_data = []
+                self.buffer_iter = []
             self.dataframe.to_csv(
                 open(self.save_path, "w")
             )  # overwrite with latest version

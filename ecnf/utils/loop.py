@@ -12,7 +12,7 @@ import pathlib
 import wandb
 
 from ecnf.utils.plotting import plot_history
-from ecnf.utils.loggers import Logger, ListLogger, WandbLogger
+from ecnf.utils.loggers import Logger, ListLogger, WandbLogger, PandasLogger
 from ecnf.utils.checkpoints import get_latest_checkpoint
 from ecnf.utils.numerical import get_leading_axis_tree
 
@@ -176,5 +176,7 @@ def run_training(config: TrainConfig):
     if isinstance(config.logger, WandbLogger) and config.save:
         wandb.save(str(pathlib.Path(checkpoints_dir)) + "/*",  base_path=config.save_dir, policy="now")
         wandb.save(str(pathlib.Path(plots_dir)) + "/*", base_path=config.save_dir, policy="now")
+
+    config.logger.close()
 
     return config.logger, state
