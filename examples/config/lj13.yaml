@@ -48,4 +48,4 @@ logger:
     name: lj13_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [lj13,flow_matching,final1]
+    tags: [lj13,flow_matching,final2]

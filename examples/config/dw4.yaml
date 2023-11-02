@@ -47,4 +47,4 @@ logger:
     name: dw4_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [dw4,flow_matching,final1]
+    tags: [dw4,flow_matching,final2]
