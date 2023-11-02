@@ -14,7 +14,7 @@ flow:
 
 
 training:
-  use_ema: true
+  use_ema: false
   optimizer:
       use_schedule: true
       init_lr: 1e-4

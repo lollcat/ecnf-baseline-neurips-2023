@@ -196,8 +196,6 @@ def setup_training(
             log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
                 cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
 
-        log_q = mask*log_q
-
         info = {}
         info.update(
             test_log_lik=maybe_masked_mean(log_q, mask),
