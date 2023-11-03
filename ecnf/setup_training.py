@@ -65,6 +65,82 @@ def setup_default_plotter(
     return default_plotter
 
 
+def setup_eval(cfg, cnf, n_nodes, dim, target_log_prob_fn,
+               test_pos_flat, test_features_flat):
+    if target_log_prob_fn and cfg.training.eval_n_model_samples is not None:
+        def eval_batch_free_fn(key: chex.PRNGKey, state: TrainingState) -> dict:
+            def forward(carry: None, xs: chex.PRNGKey):
+                key = xs
+                samples, log_q = sample_and_log_prob_cnf(cnf, state.params, key, features=test_features_flat[0],
+                                                        approx=cfg.training.eval_exact_log_prob,
+                                                        use_fixed_step_size=cfg.training.use_fixed_step_size
+                                                         )
+                samples = jnp.reshape(samples, (-1, n_nodes, dim))
+                log_p = target_log_prob_fn(samples)
+                log_w = log_p - log_q
+                return None, log_w
+
+            n_batches = cfg.training.eval_n_model_samples
+            _, log_w = jax.lax.scan(forward, init=None, xs=jax.random.split(key, n_batches))
+            log_w = log_w.flatten()
+            rv_ess = 1 / jnp.sum(jax.nn.softmax(log_w) ** 2) / log_w.shape[0]
+            info = {}
+            info.update(rv_ess=rv_ess)
+            return info
+    else:
+        eval_batch_free_fn = None
+
+    def eval_on_data_batch_fn(data: chex.ArrayTree, key: chex.PRNGKey, mask: chex.Array, state: TrainingState) -> \
+            Tuple[chex.Array, dict]:
+        key1, key2 = jax.random.split(key)
+        test_pos_flat, test_features_flat = data
+        key_batch = jax.random.split(key1, test_pos_flat.shape[0])
+
+        if cfg.training.eval_exact_log_prob:
+            log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat,
+                cfg.training.use_fixed_step_size
+            )
+        else:
+            log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
+                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
+
+        info = {}
+        info.update(
+            test_log_lik=maybe_masked_mean(log_q, mask),
+            test_log_prob_base=maybe_masked_mean(log_prob_base, mask),
+            test_delta_log_lik=maybe_masked_mean(delta_log_lik, mask),
+        )
+
+        if target_log_prob_fn is not None:
+            test_pos = jnp.reshape(test_pos_flat, (-1, n_nodes, dim))
+            log_p = target_log_prob_fn(test_pos)
+            log_w = log_p - log_q
+        else:
+            log_w = None
+        return log_w, info
+
+    def evaluate(state: TrainingState, key: chex.PRNGKey, iteration_n: int):
+        if cfg.training.use_ema and (cfg.training.n_training_iter - 1) == iteration_n:
+            state = state._replace(params=state.ema_params)
+
+        info, log_w_fwd, flat_mask = eval_fn(
+            x=(test_pos_flat, test_features_flat),
+            key=key,
+            eval_on_test_batch_fn=partial(eval_on_data_batch_fn, state=state),
+            eval_batch_free_fn=partial(eval_batch_free_fn, state=state) if eval_batch_free_fn is not None else None,
+            batch_size=cfg.training.eval_batch_size,
+        )
+
+        if target_log_prob_fn is not None:
+            further_info = calculate_forward_ess(log_w_fwd, mask=flat_mask)
+            info.update(further_info)
+
+        return info
+
+    return evaluate
+
+
 def setup_training(
         cfg: DictConfig,
         load_dataset: Callable[[int, int], Tuple[FullGraphSample, FullGraphSample]],
@@ -157,84 +233,17 @@ def setup_training(
         return state, info
 
 
-    if target_log_prob_fn and cfg.training.eval_n_model_samples is not None:
-        def eval_batch_free_fn(key: chex.PRNGKey, state: TrainingState) -> dict:
-            def forward(carry: None, xs: chex.PRNGKey):
-                key = xs
-                samples, log_q = sample_and_log_prob_cnf(cnf, state.params, key, features=train_features_flat[0],
-                                                        approx=cfg.training.eval_exact_log_prob,
-                                                        use_fixed_step_size=cfg.training.use_fixed_step_size
-                                                         )
-                samples = jnp.reshape(samples, (-1, n_nodes, dim))
-                log_p = target_log_prob_fn(samples)
-                log_w = log_p - log_q
-                return None, log_w
-
-            n_batches = cfg.training.eval_n_model_samples
-            _, log_w = jax.lax.scan(forward, init=None, xs=jax.random.split(key, n_batches))
-            log_w = log_w.flatten()
-            rv_ess = 1 / jnp.sum(jax.nn.softmax(log_w) ** 2) / log_w.shape[0]
-            info = {}
-            info.update(rv_ess=rv_ess)
-            return info
-    else:
-        eval_batch_free_fn = None
-
-
-    def eval_on_data_batch_fn(data: chex.ArrayTree, key: chex.PRNGKey, mask: chex.Array, state: TrainingState) -> \
-            Tuple[chex.Array, dict]:
-        key1, key2 = jax.random.split(key)
-        test_pos_flat, test_features_flat = data
-        key_batch = jax.random.split(key1, test_pos_flat.shape[0])
-
-        if cfg.training.eval_exact_log_prob:
-            log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None))(
-                cnf, state.params, test_pos_flat, key_batch, test_features_flat,
-                cfg.training.use_fixed_step_size
-            )
-        else:
-            log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
-                cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
-
-        info = {}
-        info.update(
-            test_log_lik=maybe_masked_mean(log_q, mask),
-            test_log_prob_base=maybe_masked_mean(log_prob_base, mask),
-            test_delta_log_lik=maybe_masked_mean(delta_log_lik, mask),
-        )
-
-        if target_log_prob_fn is not None:
-            test_pos = jnp.reshape(test_pos_flat, (-1, n_nodes, dim))
-            log_p = target_log_prob_fn(test_pos)
-            log_w = log_p - log_q
-        else:
-            log_w = None
-        return log_w, info
-
-
     if plotter is None:
         plotter = setup_default_plotter(cnf=cnf, n_nodes=n_nodes, dim=dim, n_samples_plotting=n_samples_plotting)
 
+    evaluate = setup_eval(cfg, cnf, n_nodes, dim, target_log_prob_fn,
+               test_pos_flat, test_features_flat)
 
     def eval_and_plot(
             state: TrainingState, key: chex.PRNGKey,
             iteration_n: int, save: bool, plots_dir: str) -> dict:
 
-        if cfg.training.use_ema and (cfg.training.n_training_iter - 1) == iteration_n:
-            state = state._replace(params=state.ema_params)
-
-        info, log_w_fwd, flat_mask = eval_fn(
-            x=(test_pos_flat, test_features_flat),
-            key=key,
-            eval_on_test_batch_fn=partial(eval_on_data_batch_fn, state=state),
-            eval_batch_free_fn=partial(eval_batch_free_fn, state=state) if eval_batch_free_fn is not None else None,
-            batch_size=cfg.training.eval_batch_size,
-        )
-
-        if target_log_prob_fn is not None:
-            further_info = calculate_forward_ess(log_w_fwd, mask=flat_mask)
-            info.update(further_info)
-
+        info = evaluate(state=state, key=key, iteration_n=iteration_n)
 
         figs = plotter(state, train_data_, key)
 
