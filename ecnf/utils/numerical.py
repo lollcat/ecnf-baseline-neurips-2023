@@ -48,5 +48,5 @@ def maybe_masked_mean(array: chex.Array, mask: Optional[chex.Array]):
         chex.assert_equal_shape([array, mask])
         array = jnp.where(mask, array, jnp.zeros_like(array))
         divisor = jnp.sum(mask)
-        divisor = jnp.where(divisor == 0, jnp.ones_like(divisor), divisor)  # Prevent nan when fully masked.
-        return jnp.sum(array) / divisor
+        multiplier = jnp.where(divisor == 0, jnp.array(0.), 1. / divisor)  # Prevent nan when fully masked.
+        return jnp.sum(array) * multiplier
