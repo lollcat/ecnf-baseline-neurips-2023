@@ -6,7 +6,6 @@ from functools import partial
 
 import jax.numpy as jnp
 import jax
-import chex
 import optax
 import wandb
 import chex
@@ -14,6 +13,7 @@ import matplotlib.pyplot as plt
 from jax.flatten_util import ravel_pytree
 from omegaconf import DictConfig
 
+from ecnf.utils.numerical import maybe_masked_mean
 from ecnf.targets.data import FullGraphSample
 from ecnf.cnf.core import FlowMatchingCNF
 from ecnf.cnf.build_cnf import build_cnf
@@ -196,13 +196,11 @@ def setup_training(
             log_q, log_prob_base, delta_log_lik = jax.vmap(get_log_prob, in_axes=(None, None, 0, 0, 0, None, None))(
                 cnf, state.params, test_pos_flat, key_batch, test_features_flat, True, cfg.training.use_fixed_step_size)
 
-        log_q = mask*log_q
-
         info = {}
         info.update(
-            test_log_lik=jnp.mean(log_q),
-            test_log_prob_base=jnp.mean(log_prob_base),
-            test_delta_log_lik=jnp.mean(delta_log_lik),
+            test_log_lik=maybe_masked_mean(log_q, mask),
+            test_log_prob_base=maybe_masked_mean(log_prob_base, mask),
+            test_delta_log_lik=maybe_masked_mean(delta_log_lik, mask),
         )
 
         if target_log_prob_fn is not None:

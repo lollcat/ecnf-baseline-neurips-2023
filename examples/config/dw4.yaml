@@ -14,7 +14,7 @@ flow:
 
 
 training:
-  use_ema: true
+  use_ema: false
   optimizer:
       use_schedule: true
       init_lr: 1e-4
@@ -23,7 +23,7 @@ training:
       n_iter_warmup: 10
   batch_size: 64
   seed: 0
-  n_training_iter: 200
+  n_training_iter: 100
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: 1000
@@ -47,4 +47,4 @@ logger:
     name: dw4_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [dw4,flow_matching,final1]
+    tags: [dw4,flow_matching,final2]

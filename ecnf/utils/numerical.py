@@ -1,3 +1,5 @@
+from typing import Optional
+
 import jax.numpy as jnp
 import chex
 import jax
@@ -35,3 +37,16 @@ def get_leading_axis_tree(tree: chex.ArrayTree, n_dims: int = 1) -> chex.Shape:
     leading_shape = flat_tree[0].shape[:n_dims]
     chex.assert_tree_shape_prefix(tree, leading_shape)
     return leading_shape
+
+
+
+def maybe_masked_mean(array: chex.Array, mask: Optional[chex.Array]):
+    chex.assert_rank(array, 1)
+    if mask is None:
+        return jnp.mean(array)
+    else:
+        chex.assert_equal_shape([array, mask])
+        array = jnp.where(mask, array, jnp.zeros_like(array))
+        divisor = jnp.sum(mask)
+        multiplier = jnp.where(divisor == 0, jnp.array(0.), 1. / divisor)  # Prevent nan when fully masked.
+        return jnp.sum(array) * multiplier
