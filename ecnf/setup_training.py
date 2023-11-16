@@ -87,6 +87,12 @@ def setup_training(
 
     train_data_, test_data_ = load_dataset(cfg.training.train_set_size, cfg.training.test_set_size)
 
+    # Ensure Zero-Com.
+    train_data_ = train_data_._replace(
+        positions=train_data_.positions - jnp.mean(train_data_.positions, axis=1, keepdims=True))
+    test_data_ = test_data_._replace(
+        positions=test_data_.positions - jnp.mean(test_data_.positions, axis=1, keepdims=True))
+
     optimizer_config = cfg.training.optimizer
     if optimizer_config.use_schedule:
         n_batches_per_epoch = train_data_.positions.shape[0] // batch_size
