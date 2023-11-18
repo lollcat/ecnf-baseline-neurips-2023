@@ -47,4 +47,4 @@ logger:
     name: qm9_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [qm9,flow_matching,final2]
+    tags: [qm9,flow_matching,final2,final3]
