@@ -23,7 +23,7 @@ training:
       n_iter_warmup: 10
   batch_size: 64
   seed: 0
-  n_training_iter: 100
+  n_training_iter: 200
   plot_batch_size: 64
   eval_batch_size: 64
   train_set_size: 1000
@@ -47,4 +47,4 @@ logger:
     name: dw4_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [dw4,flow_matching,final2]
+    tags: [dw4,flow_matching,final2,final3]
