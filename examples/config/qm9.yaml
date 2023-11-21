@@ -14,12 +14,12 @@ flow:
 
 
 training:
-  use_ema: true
+  use_ema: false
   optimizer:
       use_schedule: true
       init_lr: 1e-4
-      peak_lr: 1e-4
-      end_lr: 0.
+      peak_lr: 3e-4
+      end_lr: 6e-5
       n_iter_warmup: 10
   batch_size: 256
   seed: 0
@@ -47,4 +47,4 @@ logger:
     name: qm9_fm
     project: fab
     entity: flow-ais-bootstrap
-    tags: [qm9,flow_matching,final2,final3]
+    tags: [qm9,flow_matching,final2,final3,final4]
