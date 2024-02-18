@@ -183,7 +183,7 @@ class EGNN(nn.Module):
         if self.residual_x:
             vectors = vectors - initial_vectors
 
-        vectors = vectors - positions.mean(axis=0, keepdims=True)  # Zero-CoM.
+        vectors = vectors - vectors.mean(axis=0, keepdims=True)  # Zero-CoM.
 
         vectors = vectors * self.param("final_scaling", nn.initializers.ones_init(), ())
 
