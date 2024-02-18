@@ -126,7 +126,7 @@ def setup_training(
                     mlp_units=cfg.flow.network.mlp_units,
                     n_invariant_feat_hidden=cfg.flow.network.n_invariant_feat_hidden,
                     time_embedding_dim=cfg.flow.network.time_embedding_dim,
-                    n_features=train_features_flat.max() + 1,
+                    n_features=int(train_features_flat.max() + 1),
                     )
 
 
