@@ -266,6 +266,8 @@ def setup_training(
         update_state=run_epoch,
         eval_and_plot_fn=eval_and_plot,
         save=cfg.training.save,
-        save_dir=save_path)
+        save_dir=save_path,
+        save_state_all_devices=True  # not setup for pmap.
+    )
 
     return train_config
